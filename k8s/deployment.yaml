@@ -1,0 +1,78 @@
+# parakeet-server Deployment — pulls the image GitHub Actions built and pushed
+# to GHCR. The pod does NOT build anything; it pulls the prebuilt image and
+# runs the API server. The GPU is provided by the node's NVIDIA driver via
+# nvidia-container-toolkit (nvidia.com/gpu resource).
+#
+# The image tag below is a placeholder — point it at a real tag the workflow
+# published (e.g. ghcr.io/<owner>/parakeet-server:main or :sha-<short>).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: parakeet-server
+  labels:
+    app: parakeet-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: parakeet-server
+  template:
+    metadata:
+      labels:
+        app: parakeet-server
+    spec:
+      containers:
+        - name: parakeet-server
+          image: ghcr.io/OWNER/parakeet-server:main
+          imagePullSecrets:
+            - name: ghcr-pull
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: PORT
+              value: "8000"
+            # Model + provider knobs (see app.py). Defaults match the app.
+            - name: ASR_MODEL_NAME
+              value: "primeline/parakeet-primeline"
+            - name: ASR_PROVIDER
+              value: "tensorrt"
+            # Gated/private HF repos: set from a Secret, not inline.
+            # - name: HF_TOKEN
+            #   valueFrom:
+            #     secretKeyRef: { name: hf-token, key: token }
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+              memory: "16Gi"
+            requests:
+              nvidia.com/gpu: 1
+              memory: "8Gi"
+          # The one-time .nemo -> ONNX export lives here; mount a PVC so it
+          # survives pod restarts instead of re-exporting every time.
+          volumeMounts:
+            - name: onnx-cache
+              mountPath: /root/.cache/huggingface
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          # Model load can take minutes; give it a long startup budget.
+          startupProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 10
+            failureThreshold: 360
+      volumes:
+        - name: onnx-cache
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: parakeet-server
+spec:
+  selector:
+    app: parakeet-server
+  ports:
+    - port: 8000
+      targetPort: http
