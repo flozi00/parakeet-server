@@ -4,6 +4,7 @@ import io
 import json
 import logging
 import os
+import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
@@ -84,6 +85,57 @@ MAX_QUEUE_SIZE = int(os.getenv("MAX_QUEUE_SIZE", "64"))
 asr_model = None
 model_loading = False
 batch_processor: Optional["BatchProcessor"] = None
+
+
+def _ensure_tensorrt_on_ld_path():
+    """Make the pip-installed TensorRT (tensorrt-cu12-libs) visible to
+    onnxruntime.
+
+    onnxruntime's TRT provider does a plain dlopen("libnvinfer.so.10"), which
+    only searches the LD_LIBRARY_PATH captured at process start — the pip
+    wheel ships its .so files inside site-packages/tensorrt_libs/lib, so the
+    dlopen fails with "libnvinfer.so.10: cannot open shared object file" and
+    ORT silently falls the whole session back to CPU. Prepend the wheel's lib
+    dir to LD_LIBRARY_PATH and re-exec once so the dynamic loader picks it up
+    (setting the var after start has no effect on dlopen in glibc).
+    """
+    if ASR_PROVIDER != "tensorrt" or os.name != "posix":
+        return
+    try:
+        import tensorrt_libs
+    except ImportError:
+        logger.warning(
+            "ASR_PROVIDER=tensorrt but tensorrt-cu12-libs is not installed; "
+            "onnxruntime will fall back to CPU/CUDA."
+        )
+        return
+    if not tensorrt_libs.__file__:
+        return
+    pkg_dir = Path(tensorrt_libs.__file__).parent
+    lib_dir = next(
+        (p for p in (pkg_dir / "lib", pkg_dir) if any(p.glob("libnvinfer.so*"))),
+        None,
+    )
+    if lib_dir is None:
+        logger.warning("tensorrt_libs found but no libnvinfer.so* inside it.")
+        return
+    current = os.environ.get("LD_LIBRARY_PATH", "")
+    if str(lib_dir) in current.split(":"):
+        return  # already on the path (this is the re-exec'd process)
+    os.environ["LD_LIBRARY_PATH"] = (
+        f"{lib_dir}:{current}" if current else str(lib_dir)
+    )
+    # The early return above makes this loop-free: after re-exec the dir is
+    # already on LD_LIBRARY_PATH and we fall through unchanged.
+    logger.info(f"Re-exec with LD_LIBRARY_PATH={os.environ['LD_LIBRARY_PATH']}")
+    os.execv(sys.executable, [sys.executable, *sys.argv])
+
+
+# Run at import time, before uvicorn/onnxruntime are loaded: glibc resolves
+# dlopen("libnvinfer.so.10") against the LD_LIBRARY_PATH captured at process
+# start, so the re-exec must happen before ORT ever loads. Import-time also
+# covers `uvicorn app:app` (not just `python app.py`).
+_ensure_tensorrt_on_ld_path()
 
 
 # ---------------------------------------------------------------------------
@@ -257,14 +309,46 @@ class BatchProcessor:
                 await asyncio.sleep(0.1)  # avoid tight error loop
 
 
+def _log_active_providers(model) -> None:
+    """Log the execution providers each ONNX Runtime session actually got.
+
+    onnx-asr holds its rt.InferenceSession objects on private attributes of
+    the underlying Asr instance (e.g. _encoder / _decoder_joint for the
+    conformer TDT model); the adapters expose that instance as `.asr`. Walk
+    it and report what ORT registered so a silent TRT/CUDA -> CPU fallback is
+    visible in the startup log.
+    """
+    try:
+        inner = getattr(model, "asr", model)
+        sessions = {}
+        for attr in vars(inner).values():
+            get_providers = getattr(attr, "get_providers", None)
+            if callable(get_providers):
+                try:
+                    sessions[id(attr)] = get_providers()
+                except Exception:
+                    pass
+        seen = set()
+        for providers in sessions.values():
+            key = tuple(providers)
+            if key in seen:
+                continue
+            seen.add(key)
+            logger.info(f"ORT session providers: {list(providers)}")
+        if seen and all(p and p[0] == "CPUExecutionProvider" for p in seen):
+            logger.warning(
+                "All ONNX Runtime sessions fell back to CPUExecutionProvider — "
+                "TensorRT/CUDA were requested but not registered. Transcription "
+                "will be slow. Check the provider_bridge errors above "
+                "(libnvinfer / libcudnn load failures)."
+            )
+    except Exception as e:  # diagnostics only — never break startup
+        logger.debug(f"Could not inspect ORT providers: {e}")
+
+
 def _build_providers():
     """Build ONNX Runtime provider list based on configuration."""
     if ASR_PROVIDER == "tensorrt":
-        try:
-            import tensorrt_libs  # noqa: F401
-        except ImportError:
-            logger.warning("tensorrt_libs not available, will try TensorRT anyway")
-
         return [
             (
                 "TensorrtExecutionProvider",
@@ -399,29 +483,43 @@ def load_model():
             asr_model = model.with_vad(vad).with_timestamps()
             logger.info("VAD (Silero) enabled for long audio support.")
 
+        # Report which execution providers the sessions actually got. ORT
+        # silently falls back to CPU when a provider fails to register, which
+        # previously hid a broken TensorRT setup behind a "loaded successfully"
+        # log line.
+        _log_active_providers(model)
+
         logger.info("ASR model loaded successfully.")
 
-        # Warmup
+        # Warmup. flo.wav is not baked into the image, so fall back to a
+        # synthetic 1 s tone — the point is to exercise the preprocessor +
+        # ORT sessions (CUDA context, TRT execution) before real traffic.
         warmup_audio_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "flo.wav"
         )
         warmup_iterations = 3
         if os.path.exists(warmup_audio_path):
-            logger.info(f"Performing {warmup_iterations} warmup transcriptions...")
-            for i in range(warmup_iterations):
-                try:
-                    warmup_start = time.time()
-                    warmup_result = asr_model.recognize(warmup_audio_path)
-                    warmup_time = time.time() - warmup_start
-                    if i == 0 or i == warmup_iterations - 1:
-                        text = _extract_text(warmup_result)
-                        logger.info(
-                            f"Warmup {i+1}/{warmup_iterations}: {warmup_time:.2f}s - '{text[:80]}'"
-                        )
-                except Exception as e:
-                    logger.warning(f"Warmup {i+1}/{warmup_iterations} failed (non-fatal): {e}")
+            warmup_input = warmup_audio_path
         else:
-            logger.warning(f"Warmup audio not found at {warmup_audio_path}, skipping.")
+            logger.info(
+                f"Warmup audio not found at {warmup_audio_path}; "
+                "using synthetic tone."
+            )
+            _t = np.linspace(0, 1.0, 16000, dtype=np.float32)
+            warmup_input = (0.1 * np.sin(2 * np.pi * 440.0 * _t)).astype(np.float32)
+        logger.info(f"Performing {warmup_iterations} warmup transcriptions...")
+        for i in range(warmup_iterations):
+            try:
+                warmup_start = time.time()
+                warmup_result = asr_model.recognize(warmup_input)
+                warmup_time = time.time() - warmup_start
+                if i == 0 or i == warmup_iterations - 1:
+                    text = _extract_text(warmup_result)
+                    logger.info(
+                        f"Warmup {i+1}/{warmup_iterations}: {warmup_time:.2f}s - '{text[:80]}'"
+                    )
+            except Exception as e:
+                logger.warning(f"Warmup {i+1}/{warmup_iterations} failed (non-fatal): {e}")
 
     except Exception as e:
         logger.critical(f"FATAL: Could not load ASR model. Error: {e}")

@@ -1,0 +1,1309 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {
+      "label": "app.py",
+      "file_type": "code",
+      "source_file": "app.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "app",
+      "community": 1,
+      "norm_label": "app.py"
+    },
+    {
+      "label": "lifespan()",
+      "file_type": "code",
+      "source_file": "app.py",
+      "source_location": "L34",
+      "_origin": "ast",
+      "id": "app_lifespan",
+      "community": 0,
+      "norm_label": "lifespan()"
+    },
+    {
+      "label": "FastAPI",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "fastapi",
+      "community": 1,
+      "norm_label": "fastapi"
+    },
+    {
+      "label": "_ensure_tensorrt_on_ld_path()",
+      "file_type": "code",
+      "source_file": "app.py",
+      "source_location": "L90",
+      "_origin": "ast",
+      "id": "app_ensure_tensorrt_on_ld_path",
+      "community": 1,
+      "norm_label": "_ensure_tensorrt_on_ld_path()"
+    },
+    {
+      "label": "_BatchItem",
+      "file_type": "code",
+      "source_file": "app.py",
+      "source_location": "L147",
+      "_origin": "ast",
+      "id": "app_batchitem",
+      "community": 3,
+      "norm_label": "_batchitem"
+    },
+    {
+      "label": "BatchProcessor",
+      "file_type": "code",
+      "source_file": "app.py",
+      "source_location": "L156",
+      "_origin": "ast",
+      "id": "app_batchprocessor",
+      "community": 0,
+      "norm_label": "batchprocessor"
+    },
+    {
+      "label": ".__init__()",
+      "file_type": "code",
+      "source_file": "app.py",
+      "source_location": "L163",
+      "_origin": "ast",
+      "id": "app_batchprocessor_init",
+      "community": 0,
+      "norm_label": ".__init__()"
+    },
+    {
+      "label": ".start()",
+      "file_type": "code",
+      "source_file": "app.py",
+      "source_location": "L177",
+      "_origin": "ast",
+      "id": "app_batchprocessor_start",
+      "community": 0,
+      "norm_label": ".start()"
+    },
+    {
+      "label": ".stop()",
+      "file_type": "code",
+      "source_file": "app.py",
+      "source_location": "L180",
+      "_origin": "ast",
+      "id": "app_batchprocessor_stop",
+      "community": 0,
+      "norm_label": ".stop()"
+    },
+    {
+      "label": ".queue_size()",
+      "file_type": "code",
+      "source_file": "app.py",
+      "source_location": "L192",
+      "_origin": "ast",
+      "id": "app_batchprocessor_queue_size",
+      "community": 0,
+      "norm_label": ".queue_size()"
+    },
+    {
+      "label": ".stats()",
+      "file_type": "code",
+      "source_file": "app.py",
+      "source_location": "L196",
+      "_origin": "ast",
+      "id": "app_batchprocessor_stats",
+      "community": 0,
+      "norm_label": ".stats()"
+    },
+    {
+      "label": ".submit()",
+      "file_type": "code",
+      "source_file": "app.py",
+      "source_location": "L199",
+      "_origin": "ast",
+      "id": "app_batchprocessor_submit",
+      "community": 3,
+      "norm_label": ".submit()"
+    },
+    {
+      "label": "ndarray",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "ndarray",
+      "community": 3,
+      "norm_label": "ndarray"
+    },
+    {
+      "label": "._collect_batch()",
+      "file_type": "code",
+      "source_file": "app.py",
+      "source_location": "L217",
+      "_origin": "ast",
+      "id": "app_batchprocessor_collect_batch",
+      "community": 0,
+      "norm_label": "._collect_batch()"
+    },
+    {
+      "label": "._run_inference()",
+      "file_type": "code",
+      "source_file": "app.py",
+      "source_location": "L236",
+      "_origin": "ast",
+      "id": "app_batchprocessor_run_inference",
+      "community": 3,
+      "norm_label": "._run_inference()"
+    },
+    {
+      "label": "._process_loop()",
+      "file_type": "code",
+      "source_file": "app.py",
+      "source_location": "L240",
+      "_origin": "ast",
+      "id": "app_batchprocessor_process_loop",
+      "community": 0,
+      "norm_label": "._process_loop()"
+    },
+    {
+      "label": "_log_active_providers()",
+      "file_type": "code",
+      "source_file": "app.py",
+      "source_location": "L312",
+      "_origin": "ast",
+      "id": "app_log_active_providers",
+      "community": 2,
+      "norm_label": "_log_active_providers()"
+    },
+    {
+      "label": "_build_providers()",
+      "file_type": "code",
+      "source_file": "app.py",
+      "source_location": "L349",
+      "_origin": "ast",
+      "id": "app_build_providers",
+      "community": 2,
+      "norm_label": "_build_providers()"
+    },
+    {
+      "label": "_ensure_onnx_export()",
+      "file_type": "code",
+      "source_file": "app.py",
+      "source_location": "L369",
+      "_origin": "ast",
+      "id": "app_ensure_onnx_export",
+      "community": 2,
+      "norm_label": "_ensure_onnx_export()"
+    },
+    {
+      "label": "load_model()",
+      "file_type": "code",
+      "source_file": "app.py",
+      "source_location": "L441",
+      "_origin": "ast",
+      "id": "app_load_model",
+      "community": 2,
+      "norm_label": "load_model()"
+    },
+    {
+      "label": "_materialize_items()",
+      "file_type": "code",
+      "source_file": "app.py",
+      "source_location": "L531",
+      "_origin": "ast",
+      "id": "app_materialize_items",
+      "community": 4,
+      "norm_label": "_materialize_items()"
+    },
+    {
+      "label": "_extract_text()",
+      "file_type": "code",
+      "source_file": "app.py",
+      "source_location": "L555",
+      "_origin": "ast",
+      "id": "app_extract_text",
+      "community": 2,
+      "norm_label": "_extract_text()"
+    },
+    {
+      "label": "_avg_logprob()",
+      "file_type": "code",
+      "source_file": "app.py",
+      "source_location": "L566",
+      "_origin": "ast",
+      "id": "app_avg_logprob",
+      "community": 4,
+      "norm_label": "_avg_logprob()"
+    },
+    {
+      "label": "_result_to_segments()",
+      "file_type": "code",
+      "source_file": "app.py",
+      "source_location": "L574",
+      "_origin": "ast",
+      "id": "app_result_to_segments",
+      "community": 4,
+      "norm_label": "_result_to_segments()"
+    },
+    {
+      "label": "_ensure_response_segments()",
+      "file_type": "code",
+      "source_file": "app.py",
+      "source_location": "L627",
+      "_origin": "ast",
+      "id": "app_ensure_response_segments",
+      "community": 1,
+      "norm_label": "_ensure_response_segments()"
+    },
+    {
+      "label": "health_check()",
+      "file_type": "code",
+      "source_file": "app.py",
+      "source_location": "L666",
+      "_origin": "ast",
+      "id": "app_health_check",
+      "community": 2,
+      "norm_label": "health_check()"
+    },
+    {
+      "label": "readiness()",
+      "file_type": "code",
+      "source_file": "app.py",
+      "source_location": "L723",
+      "_origin": "ast",
+      "id": "app_readiness",
+      "community": 1,
+      "norm_label": "readiness()"
+    },
+    {
+      "label": "transcribe_rest()",
+      "file_type": "code",
+      "source_file": "app.py",
+      "source_location": "L741",
+      "_origin": "ast",
+      "id": "app_transcribe_rest",
+      "community": 1,
+      "norm_label": "transcribe_rest()"
+    },
+    {
+      "label": "UploadFile",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "_origin": "ast",
+      "id": "uploadfile",
+      "community": 1,
+      "norm_label": "uploadfile"
+    },
+    {
+      "label": "main()",
+      "file_type": "code",
+      "source_file": "app.py",
+      "source_location": "L799",
+      "_origin": "ast",
+      "id": "app_main",
+      "community": 1,
+      "norm_label": "main()"
+    },
+    {
+      "label": "Startup and shutdown logic",
+      "file_type": "rationale",
+      "source_file": "app.py",
+      "source_location": "L35",
+      "_origin": "ast",
+      "id": "app_rationale_35",
+      "community": 0,
+      "norm_label": "startup and shutdown logic"
+    },
+    {
+      "label": "Make the pip-installed TensorRT (tensorrt-cu12-libs) visible to     onnxruntime.",
+      "file_type": "rationale",
+      "source_file": "app.py",
+      "source_location": "L91",
+      "_origin": "ast",
+      "id": "app_rationale_91",
+      "community": 1,
+      "norm_label": "make the pip-installed tensorrt (tensorrt-cu12-libs) visible to     onnxruntime."
+    },
+    {
+      "label": "A single queued transcription request.",
+      "file_type": "rationale",
+      "source_file": "app.py",
+      "source_location": "L148",
+      "_origin": "ast",
+      "id": "app_rationale_148",
+      "community": 3,
+      "norm_label": "a single queued transcription request."
+    },
+    {
+      "label": "Collects concurrent transcription requests and processes them with     controlle",
+      "file_type": "rationale",
+      "source_file": "app.py",
+      "source_location": "L157",
+      "_origin": "ast",
+      "id": "app_rationale_157",
+      "community": 0,
+      "norm_label": "collects concurrent transcription requests and processes them with     controlle"
+    },
+    {
+      "label": "Submit audio for transcription.  Blocks until result is ready.         Raises as",
+      "file_type": "rationale",
+      "source_file": "app.py",
+      "source_location": "L200",
+      "_origin": "ast",
+      "id": "app_rationale_200",
+      "community": 3,
+      "norm_label": "submit audio for transcription.  blocks until result is ready.         raises as"
+    },
+    {
+      "label": "Wait for at least one item, then collect up to max_batch_size         within the",
+      "file_type": "rationale",
+      "source_file": "app.py",
+      "source_location": "L218",
+      "_origin": "ast",
+      "id": "app_rationale_218",
+      "community": 0,
+      "norm_label": "wait for at least one item, then collect up to max_batch_size         within the"
+    },
+    {
+      "label": "Blocking inference \u2014 called inside the thread-pool executor.",
+      "file_type": "rationale",
+      "source_file": "app.py",
+      "source_location": "L237",
+      "_origin": "ast",
+      "id": "app_rationale_237",
+      "community": 3,
+      "norm_label": "blocking inference \u2014 called inside the thread-pool executor."
+    },
+    {
+      "label": "Background loop: collect batches and process items.",
+      "file_type": "rationale",
+      "source_file": "app.py",
+      "source_location": "L241",
+      "_origin": "ast",
+      "id": "app_rationale_241",
+      "community": 0,
+      "norm_label": "background loop: collect batches and process items."
+    },
+    {
+      "label": "Log the execution providers each ONNX Runtime session actually got.      onnx-as",
+      "file_type": "rationale",
+      "source_file": "app.py",
+      "source_location": "L313",
+      "_origin": "ast",
+      "id": "app_rationale_313",
+      "community": 2,
+      "norm_label": "log the execution providers each onnx runtime session actually got.      onnx-as"
+    },
+    {
+      "label": "Build ONNX Runtime provider list based on configuration.",
+      "file_type": "rationale",
+      "source_file": "app.py",
+      "source_location": "L350",
+      "_origin": "ast",
+      "id": "app_rationale_350",
+      "community": 2,
+      "norm_label": "build onnx runtime provider list based on configuration."
+    },
+    {
+      "label": "Export .nemo model to ONNX if not already cached. Returns local ONNX path.",
+      "file_type": "rationale",
+      "source_file": "app.py",
+      "source_location": "L370",
+      "_origin": "ast",
+      "id": "app_rationale_370",
+      "community": 2,
+      "norm_label": "export .nemo model to onnx if not already cached. returns local onnx path."
+    },
+    {
+      "label": "Load the ASR model lazily on first request",
+      "file_type": "rationale",
+      "source_file": "app.py",
+      "source_location": "L442",
+      "_origin": "ast",
+      "id": "app_rationale_442",
+      "community": 2,
+      "norm_label": "load the asr model lazily on first request"
+    },
+    {
+      "label": "Normalize any onnx-asr recognize() return value into a list of result     items",
+      "file_type": "rationale",
+      "source_file": "app.py",
+      "source_location": "L532",
+      "_origin": "ast",
+      "id": "app_rationale_532",
+      "community": 4,
+      "norm_label": "normalize any onnx-asr recognize() return value into a list of result     items"
+    },
+    {
+      "label": "Extract the full transcript text from any onnx-asr result type.",
+      "file_type": "rationale",
+      "source_file": "app.py",
+      "source_location": "L556",
+      "_origin": "ast",
+      "id": "app_rationale_556",
+      "community": 2,
+      "norm_label": "extract the full transcript text from any onnx-asr result type."
+    },
+    {
+      "label": "Mean token log-probability for a result item, or None when unavailable.",
+      "file_type": "rationale",
+      "source_file": "app.py",
+      "source_location": "L567",
+      "_origin": "ast",
+      "id": "app_rationale_567",
+      "community": 4,
+      "norm_label": "mean token log-probability for a result item, or none when unavailable."
+    },
+    {
+      "label": "Convert an onnx-asr result into OpenAI verbose_json compatible segments.      Ma",
+      "file_type": "rationale",
+      "source_file": "app.py",
+      "source_location": "L575",
+      "_origin": "ast",
+      "id": "app_rationale_575",
+      "community": 4,
+      "norm_label": "convert an onnx-asr result into openai verbose_json compatible segments.      ma"
+    },
+    {
+      "label": "Health check endpoint.",
+      "file_type": "rationale",
+      "source_file": "app.py",
+      "source_location": "L667",
+      "_origin": "ast",
+      "id": "app_rationale_667",
+      "community": 2,
+      "norm_label": "health check endpoint."
+    },
+    {
+      "label": "Readiness probe: 503 until the ASR model is actually loaded.      /health answer",
+      "file_type": "rationale",
+      "source_file": "app.py",
+      "source_location": "L724",
+      "_origin": "ast",
+      "id": "app_rationale_724",
+      "community": 1,
+      "norm_label": "readiness probe: 503 until the asr model is actually loaded.      /health answer"
+    },
+    {
+      "label": "Handles audio transcription via REST API (OpenAI compatible).     Requests are q",
+      "file_type": "rationale",
+      "source_file": "app.py",
+      "source_location": "L749",
+      "_origin": "ast",
+      "id": "app_rationale_749",
+      "community": 1,
+      "norm_label": "handles audio transcription via rest api (openai compatible).     requests are q"
+    },
+    {
+      "label": "Main application entry point.",
+      "file_type": "rationale",
+      "source_file": "app.py",
+      "source_location": "L800",
+      "_origin": "ast",
+      "id": "app_rationale_800",
+      "community": 1,
+      "norm_label": "main application entry point."
+    },
+    {
+      "label": "README.md",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "readme",
+      "community": 5,
+      "norm_label": "readme.md"
+    },
+    {
+      "label": "parakeet-server",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "readme_parakeet_server",
+      "community": 5,
+      "norm_label": "parakeet-server"
+    }
+  ],
+  "links": [
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L566",
+      "weight": 1.0,
+      "source": "app",
+      "target": "app_avg_logprob",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L147",
+      "weight": 1.0,
+      "source": "app",
+      "target": "app_batchitem",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L156",
+      "weight": 1.0,
+      "source": "app",
+      "target": "app_batchprocessor",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L349",
+      "weight": 1.0,
+      "source": "app",
+      "target": "app_build_providers",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L369",
+      "weight": 1.0,
+      "source": "app",
+      "target": "app_ensure_onnx_export",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L627",
+      "weight": 1.0,
+      "source": "app",
+      "target": "app_ensure_response_segments",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L90",
+      "weight": 1.0,
+      "source": "app",
+      "target": "app_ensure_tensorrt_on_ld_path",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L555",
+      "weight": 1.0,
+      "source": "app",
+      "target": "app_extract_text",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L666",
+      "weight": 1.0,
+      "source": "app",
+      "target": "app_health_check",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L34",
+      "weight": 1.0,
+      "source": "app",
+      "target": "app_lifespan",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L441",
+      "weight": 1.0,
+      "source": "app",
+      "target": "app_load_model",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L312",
+      "weight": 1.0,
+      "source": "app",
+      "target": "app_log_active_providers",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L799",
+      "weight": 1.0,
+      "source": "app",
+      "target": "app_main",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L531",
+      "weight": 1.0,
+      "source": "app",
+      "target": "app_materialize_items",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L723",
+      "weight": 1.0,
+      "source": "app",
+      "target": "app_readiness",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L574",
+      "weight": 1.0,
+      "source": "app",
+      "target": "app_result_to_segments",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L741",
+      "weight": 1.0,
+      "source": "app",
+      "target": "app_transcribe_rest",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "app",
+      "target": "fastapi",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L42",
+      "weight": 1.0,
+      "source": "app_lifespan",
+      "target": "app_batchprocessor",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L43",
+      "weight": 1.0,
+      "source": "app_lifespan",
+      "target": "app_batchprocessor_start",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L51",
+      "weight": 1.0,
+      "source": "app_lifespan",
+      "target": "app_batchprocessor_stop",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L39",
+      "weight": 1.0,
+      "source": "app_lifespan",
+      "target": "app_load_model",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L34",
+      "weight": 1.0,
+      "source": "app_lifespan",
+      "target": "fastapi",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L35",
+      "weight": 1.0,
+      "source": "app_rationale_35",
+      "target": "app_lifespan",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L91",
+      "weight": 1.0,
+      "source": "app_rationale_91",
+      "target": "app_ensure_tensorrt_on_ld_path",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "generic_arg",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L217",
+      "weight": 1.0,
+      "source": "app_batchprocessor_collect_batch",
+      "target": "app_batchitem",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L204",
+      "weight": 1.0,
+      "source": "app_batchprocessor_submit",
+      "target": "app_batchitem",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L148",
+      "weight": 1.0,
+      "source": "app_rationale_148",
+      "target": "app_batchitem",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L217",
+      "weight": 1.0,
+      "source": "app_batchprocessor",
+      "target": "app_batchprocessor_collect_batch",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L163",
+      "weight": 1.0,
+      "source": "app_batchprocessor",
+      "target": "app_batchprocessor_init",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L240",
+      "weight": 1.0,
+      "source": "app_batchprocessor",
+      "target": "app_batchprocessor_process_loop",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L192",
+      "weight": 1.0,
+      "source": "app_batchprocessor",
+      "target": "app_batchprocessor_queue_size",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L236",
+      "weight": 1.0,
+      "source": "app_batchprocessor",
+      "target": "app_batchprocessor_run_inference",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L177",
+      "weight": 1.0,
+      "source": "app_batchprocessor",
+      "target": "app_batchprocessor_start",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L196",
+      "weight": 1.0,
+      "source": "app_batchprocessor",
+      "target": "app_batchprocessor_stats",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L180",
+      "weight": 1.0,
+      "source": "app_batchprocessor",
+      "target": "app_batchprocessor_stop",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "method",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L199",
+      "weight": 1.0,
+      "source": "app_batchprocessor",
+      "target": "app_batchprocessor_submit",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L157",
+      "weight": 1.0,
+      "source": "app_rationale_157",
+      "target": "app_batchprocessor",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L178",
+      "weight": 1.0,
+      "source": "app_batchprocessor_start",
+      "target": "app_batchprocessor_process_loop",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L199",
+      "weight": 1.0,
+      "source": "app_batchprocessor_submit",
+      "target": "ndarray",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L200",
+      "weight": 1.0,
+      "source": "app_rationale_200",
+      "target": "app_batchprocessor_submit",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L779",
+      "weight": 1.0,
+      "source": "app_transcribe_rest",
+      "target": "app_batchprocessor_submit",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L236",
+      "weight": 1.0,
+      "source": "app_batchprocessor_run_inference",
+      "target": "ndarray",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L245",
+      "weight": 1.0,
+      "source": "app_batchprocessor_process_loop",
+      "target": "app_batchprocessor_collect_batch",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L218",
+      "weight": 1.0,
+      "source": "app_rationale_218",
+      "target": "app_batchprocessor_collect_batch",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L237",
+      "weight": 1.0,
+      "source": "app_rationale_237",
+      "target": "app_batchprocessor_run_inference",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L265",
+      "weight": 1.0,
+      "source": "app_batchprocessor_process_loop",
+      "target": "app_extract_text",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L264",
+      "weight": 1.0,
+      "source": "app_batchprocessor_process_loop",
+      "target": "app_materialize_items",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L266",
+      "weight": 1.0,
+      "source": "app_batchprocessor_process_loop",
+      "target": "app_result_to_segments",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L241",
+      "weight": 1.0,
+      "source": "app_rationale_241",
+      "target": "app_batchprocessor_process_loop",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L490",
+      "weight": 1.0,
+      "source": "app_load_model",
+      "target": "app_log_active_providers",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L313",
+      "weight": 1.0,
+      "source": "app_rationale_313",
+      "target": "app_log_active_providers",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L465",
+      "weight": 1.0,
+      "source": "app_load_model",
+      "target": "app_build_providers",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L350",
+      "weight": 1.0,
+      "source": "app_rationale_350",
+      "target": "app_build_providers",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L463",
+      "weight": 1.0,
+      "source": "app_load_model",
+      "target": "app_ensure_onnx_export",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L370",
+      "weight": 1.0,
+      "source": "app_rationale_370",
+      "target": "app_ensure_onnx_export",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L683",
+      "weight": 1.0,
+      "source": "app_health_check",
+      "target": "app_load_model",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L517",
+      "weight": 1.0,
+      "source": "app_load_model",
+      "target": "app_extract_text",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L442",
+      "weight": 1.0,
+      "source": "app_rationale_442",
+      "target": "app_load_model",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L752",
+      "weight": 1.0,
+      "source": "app_transcribe_rest",
+      "target": "app_load_model",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L558",
+      "weight": 1.0,
+      "source": "app_extract_text",
+      "target": "app_materialize_items",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L532",
+      "weight": 1.0,
+      "source": "app_rationale_532",
+      "target": "app_materialize_items",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L590",
+      "weight": 1.0,
+      "source": "app_result_to_segments",
+      "target": "app_materialize_items",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L701",
+      "weight": 1.0,
+      "source": "app_health_check",
+      "target": "app_extract_text",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L556",
+      "weight": 1.0,
+      "source": "app_rationale_556",
+      "target": "app_extract_text",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L567",
+      "weight": 1.0,
+      "source": "app_rationale_567",
+      "target": "app_avg_logprob",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L619",
+      "weight": 1.0,
+      "source": "app_result_to_segments",
+      "target": "app_avg_logprob",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L575",
+      "weight": 1.0,
+      "source": "app_rationale_575",
+      "target": "app_result_to_segments",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L782",
+      "weight": 1.0,
+      "source": "app_transcribe_rest",
+      "target": "app_ensure_response_segments",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L667",
+      "weight": 1.0,
+      "source": "app_rationale_667",
+      "target": "app_health_check",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L724",
+      "weight": 1.0,
+      "source": "app_rationale_724",
+      "target": "app_readiness",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L749",
+      "weight": 1.0,
+      "source": "app_rationale_749",
+      "target": "app_transcribe_rest",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "context": "parameter_type",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L741",
+      "weight": 1.0,
+      "source": "app_transcribe_rest",
+      "target": "uploadfile",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "app.py",
+      "source_location": "L800",
+      "weight": 1.0,
+      "source": "app_rationale_800",
+      "target": "app_main",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "readme",
+      "target": "readme_parakeet_server",
+      "confidence_score": 1.0
+    }
+  ],
+  "hyperedges": [],
+  "built_at_commit": "d3e58cf4c7ce5eb88b9eba0f6d769185db162f03"
+}

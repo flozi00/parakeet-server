@@ -18,8 +18,13 @@ RUN apt-get update \
 WORKDIR /app
 
 # Install dependencies first so the layer is cached across app.py edits.
+# --extra-index-url pypi.nvidia.com: tensorrt-cu12-libs publishes only an
+# sdist stub to PyPI (the real manylinux wheels live on the NVIDIA index), so
+# a plain PyPI install of the pinned TRT version fails to build.
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir \
+        --extra-index-url https://pypi.nvidia.com \
+        -r requirements.txt
 
 COPY app.py .
 

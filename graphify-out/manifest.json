@@ -1,0 +1,27 @@
+{
+  "app.py": {
+    "mtime": 1788361376.1122215,
+    "ast_hash": "d6ab2f1e9aa9bb796bc2d7f01400187d",
+    "semantic_hash": ""
+  },
+  ".github/workflows/build-image.yml": {
+    "mtime": 1788342078.3197315,
+    "ast_hash": "693629098e0d52694aaff0ec491ccf7e",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1788339162.8455029,
+    "ast_hash": "e9e59d54cf33215f051b8e280df04b8a",
+    "semantic_hash": ""
+  },
+  "k8s/deployment.yaml": {
+    "mtime": 1788341464.0044878,
+    "ast_hash": "900dd0e523a88c747b6b066de3be27b1",
+    "semantic_hash": ""
+  },
+  "requirements.txt": {
+    "mtime": 1788360316.07045,
+    "ast_hash": "af9c8c7da721a80b58aab0ab938db0c2",
+    "semantic_hash": ""
+  }
+}
