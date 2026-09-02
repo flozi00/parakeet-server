@@ -46,11 +46,18 @@ jobs:
 
       # The CUDA/TensorRT stack comes from pip wheels (see requirements.txt),
       # so this builds on a plain x86_64 runner — no GPU, no nvidia-toolkit.
+      #
+      # Registry cache, not type=gha: the pip layer alone is multi-GB, which
+      # the 10 GB Actions cache quota evicts within a couple of builds, and the
+      # GHA cache is per-branch anyway. A :buildcache tag on GHCR has no such
+      # quota and is shared across branches/refs. mode=max keeps intermediate
+      # layers (the base + apt layer) cacheable too; the cache tag is
+      # overwritten each build, so it never accumulates garbage.
       - uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
