@@ -1,10 +1,19 @@
-# parakeet-server Deployment — pulls the image GitHub Actions built and pushed
-# to GHCR. The pod does NOT build anything; it pulls the prebuilt image and
-# runs the API server. The GPU is provided by the node's NVIDIA driver via
-# nvidia-container-toolkit (nvidia.com/gpu resource).
+# parakeet-server Deployment — pulls the image GitHub Actions builds and pushes
+# to GHCR (public image, no pull secret needed). The pod does NOT build
+# anything; it pulls the prebuilt image and runs the API server. The GPU comes
+# from the node's NVIDIA driver via nvidia-container-toolkit
+# (nvidia.com/gpu resource).
 #
-# The image tag below is a placeholder — point it at a real tag the workflow
-# published (e.g. ghcr.io/<owner>/parakeet-server:main or :sha-<short>).
+# Probe layout (matches app.py endpoints):
+#   startupProbe  /health  — answers 200 as soon as uvicorn is up (status
+#                            "degraded" until the model loads), so it only
+#                            proves the HTTP server bound its port.
+#   readinessProbe /ready  — 503 until the ASR model is loaded, so the Service
+#                            never routes to a pod that cannot transcribe yet.
+#   no livenessProbe       — the first start runs a one-time .nemo -> ONNX ->
+#                            TensorRT engine build that can take tens of
+#                            minutes; a liveness probe would kill the pod
+#                            mid-build. The startup budget below covers it.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -23,9 +32,7 @@ spec:
     spec:
       containers:
         - name: parakeet-server
-          image: ghcr.io/OWNER/parakeet-server:main
-          imagePullSecrets:
-            - name: ghcr-pull
+          image: ghcr.io/flozi00/parakeet-server:main
           ports:
             - containerPort: 8000
               name: http
@@ -37,7 +44,10 @@ spec:
               value: "primeline/parakeet-primeline"
             - name: ASR_PROVIDER
               value: "tensorrt"
-            # Gated/private HF repos: set from a Secret, not inline.
+            - name: USE_VAD
+              value: "true"
+            # Gated/private HF repos: set from a Secret, not inline:
+            #   kubectl create secret generic hf-token --from-literal=token=***
             # - name: HF_TOKEN
             #   valueFrom:
             #     secretKeyRef: { name: hf-token, key: token }
@@ -48,23 +58,27 @@ spec:
             requests:
               nvidia.com/gpu: 1
               memory: "8Gi"
-          # The one-time .nemo -> ONNX export lives here; mount a PVC so it
-          # survives pod restarts instead of re-exporting every time.
+          # The one-time .nemo -> ONNX export + TensorRT engine live here. Keep
+          # them on a PVC (or a node-path hostPath) so a pod restart reuses the
+          # engine instead of rebuilding it from scratch.
           volumeMounts:
             - name: onnx-cache
               mountPath: /root/.cache/huggingface
           readinessProbe:
-            httpGet: { path: /health, port: http }
-            initialDelaySeconds: 10
+            httpGet: { path: /ready, port: http }
             periodSeconds: 15
-          # Model load can take minutes; give it a long startup budget.
+            timeoutSeconds: 5
           startupProbe:
             httpGet: { path: /health, port: http }
             periodSeconds: 10
+            # 10 s x 360 = 1 h for uvicorn to bind + first engine build.
             failureThreshold: 360
       volumes:
         - name: onnx-cache
           emptyDir: {}
+          # Production: swap for a PVC so the ONNX/TensorRT cache survives
+          # rescheduling:
+          # persistentVolumeClaim: { claimName: parakeet-onnx-cache }
 ---
 apiVersion: v1
 kind: Service

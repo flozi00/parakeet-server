@@ -621,6 +621,23 @@ async def health_check(deep: bool = False):
         return JSONResponse(content=base_status, status_code=503)
 
 
+@app.get("/ready")
+async def readiness():
+    """Readiness probe: 503 until the ASR model is actually loaded.
+
+    /health answers 200 ("degraded") as soon as the HTTP server is up, which
+    makes it a fine liveness probe but a useless readiness gate — Kubernetes
+    would route traffic to a pod that cannot transcribe yet (the first start
+    also runs a one-time .nemo -> ONNX/TensorRT export that can take many
+    minutes). This endpoint flips to 200 exactly when the model can serve.
+    """
+    if asr_model is None:
+        return JSONResponse(
+            content={"status": "not_ready", "model_loaded": False}, status_code=503
+        )
+    return {"status": "ready", "model_loaded": True, "model_name": ASR_MODEL_NAME}
+
+
 @app.post("/audio/transcriptions")
 @app.post("/v1/audio/transcriptions")
 async def transcribe_rest(

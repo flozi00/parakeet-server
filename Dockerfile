@@ -9,11 +9,10 @@
 FROM python:3.10-slim
 
 # libsndfile1: soundfile decodes wav/flac/ogg uploads.
-# curl: the HEALTHCHECK below.
 # build-essential + libgomp1: a few wheels compile/link against OpenMP.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        libsndfile1 curl build-essential libgomp1 \
+        libsndfile1 build-essential libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -32,9 +31,11 @@ ENV PORT=8000 \
 
 EXPOSE 8000
 
-# /health answers 200 as soon as the HTTP server is up (status: degraded until
-# the model loads), so it is a valid liveness/readiness probe.
+# Two probes, matching app.py: /health answers 200 ("degraded") the moment
+# uvicorn binds, /ready flips to 200 only once the ASR model is loaded. This
+# Docker-level check is liveness-only (Kubernetes uses the probes in
+# k8s/deployment.yaml instead); python/urllib keeps curl out of the image.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=300s --retries=3 \
-    CMD curl -fsS http://localhost:${PORT}/health || exit 1
+    CMD python -c "import os,urllib.request;urllib.request.urlopen('http://127.0.0.1:'+os.environ.get('PORT','8000')+'/health',timeout=8)" || exit 1
 
 CMD ["python", "app.py"]
