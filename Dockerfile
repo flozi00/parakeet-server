@@ -6,13 +6,13 @@
 # pre-baked multi-GB CUDA image is needed. The host still needs the NVIDIA
 # driver + nvidia-container-toolkit so the container can see the GPU.
 
-FROM python:3.10-slim
+FROM python:3.12-slim
 
 # libsndfile1: soundfile decodes wav/flac/ogg uploads.
 # build-essential + libgomp1: a few wheels compile/link against OpenMP.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        libsndfile1 build-essential libgomp1 \
+        libsndfile1 build-essential libgomp1 git ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -26,7 +26,7 @@ RUN pip install --no-cache-dir \
         --extra-index-url https://pypi.nvidia.com \
         -r requirements.txt
 
-COPY app.py .
+COPY app.py diarization.py ./
 
 # Where the runtime ONNX export (and any HF downloads) land. Mount a volume
 # here in production so the one-time .nemo -> ONNX export survives restarts.

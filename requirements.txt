@@ -1,14 +1,11 @@
 fastapi>=0.115.11
 uvicorn>=0.34.0
 onnx-asr[hub]>=0.10.2
-# onnx-asr pins onnxruntime-gpu <1.24 on python<3.11 (this image is 3.10) and
-# ORT >=1.24/1.2x links against TensorRT 11 (libnvinfer.so.11). Pin both sides
-# of the pair to the TRT-10 generation: ORT 1.23.2 is built against
-# libnvinfer.so.10 and is the newest cp310 wheel, and tensorrt-cu12-libs
-# 10.9.0.34 is the matching TRT 10 release (newer 11.x wheels ship
-# libnvinfer.so.11, which ORT 1.23 cannot load).
+# Keep the existing ORT / TensorRT-10 pair across the Python 3.12 upgrade.
 onnxruntime-gpu==1.23.2
-nemo_toolkit[asr]
+# Nemotron-3's high-resolution Sortformer requires code newer than v3.0.0.
+# Pin the upstream revision rather than installing a moving main branch.
+nemo_toolkit[asr] @ git+https://github.com/NVIDIA-NeMo/Speech.git@cf724ac337d1ebc7d0dda1e23fb80916f52927a5
 nvidia-cublas-cu12
 nvidia-cuda-runtime-cu12
 nvidia-cuda-nvrtc-cu12
@@ -22,3 +19,4 @@ tensorrt-cu12-libs==10.9.0.34
 python-multipart>=0.0.20
 numpy
 soundfile>=0.12.1
+scipy>=1.11

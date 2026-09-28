@@ -46,6 +46,11 @@ spec:
               value: "tensorrt"
             - name: USE_VAD
               value: "true"
+            # Optional Nemotron speaker diarization (loaded on first request).
+            # - name: DIARIZATION_ENABLED
+            #   value: "true"
+            # - name: DIARIZATION_DEVICE
+            #   value: "cuda"
             # Gated/private HF repos: set from a Secret, not inline:
             #   kubectl create secret generic hf-token --from-literal=token=***
             # - name: HF_TOKEN

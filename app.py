@@ -19,6 +19,8 @@ from fastapi.responses import JSONResponse
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 
+from diarization import NemotronDiarizer, transcribe_turns
+
 middleware = [
     Middleware(
         CORSMiddleware,
@@ -70,6 +72,8 @@ ASR_PROVIDER = os.getenv("ASR_PROVIDER", "tensorrt")
 TRT_FP16_ENABLE = os.getenv("TRT_FP16_ENABLE", "true").lower() == "true"
 TRT_MAX_WORKSPACE_GB = int(os.getenv("TRT_MAX_WORKSPACE_GB", "6"))
 USE_VAD = os.getenv("USE_VAD", "true").lower() == "true"
+DIARIZATION_ENABLED = os.getenv("DIARIZATION_ENABLED", "false").lower() == "true"
+diarizer = NemotronDiarizer()
 
 # NeMo export settings (only used when ONNX files not cached)
 NEMO_REPO_ID = os.getenv("NEMO_REPO_ID", "primeline/parakeet-primeline")
@@ -150,6 +154,7 @@ class _BatchItem:
     sample_rate: int
     future: asyncio.Future
     filename: str
+    diarize: bool = False
     submit_time: float = field(default_factory=time.time)
 
 
@@ -196,13 +201,14 @@ class BatchProcessor:
     def stats(self) -> dict:
         return {**self._stats, "queue_depth": self._queue.qsize()}
 
-    async def submit(self, waveform: np.ndarray, sample_rate: int, filename: str) -> dict:
+    async def submit(self, waveform: np.ndarray, sample_rate: int, filename: str,
+                     diarize: bool = False) -> dict:
         """Submit audio for transcription.  Blocks until result is ready.
         Raises asyncio.QueueFull when the service is overloaded."""
         loop = asyncio.get_running_loop()
         future: asyncio.Future = loop.create_future()
         item = _BatchItem(waveform=waveform, sample_rate=sample_rate,
-                          future=future, filename=filename)
+                          future=future, filename=filename, diarize=diarize)
         try:
             self._queue.put_nowait(item)
         except asyncio.QueueFull:
@@ -233,9 +239,19 @@ class BatchProcessor:
                 break
         return batch
 
-    def _run_inference(self, waveform: np.ndarray, sample_rate: int):
+    def _run_inference(self, waveform: np.ndarray, sample_rate: int, diarize: bool = False):
         """Blocking inference — called inside the thread-pool executor."""
-        return asr_model.recognize(waveform, sample_rate=sample_rate)
+        if diarize:
+            try:
+                turns = diarizer.diarize(waveform, sample_rate)
+            except Exception as exc:
+                logger.exception("Diarization failed")
+                raise HTTPException(503, "Diarization unavailable; check server logs and NeMo installation.") from exc
+            return transcribe_turns(
+                waveform, sample_rate, turns, asr_model.recognize, _extract_text
+            )
+        # VAD inference is lazy: consume the generator on the GPU worker too.
+        return _materialize_items(asr_model.recognize(waveform, sample_rate=sample_rate))
 
     async def _process_loop(self):
         """Background loop: collect batches and process items."""
@@ -247,6 +263,8 @@ class BatchProcessor:
                 self._stats["batches_processed"] += 1
 
                 for item in batch:
+                    if item.future.cancelled():
+                        continue
                     try:
                         start_time = time.time()
                         result = await loop.run_in_executor(
@@ -254,9 +272,18 @@ class BatchProcessor:
                             self._run_inference,
                             item.waveform,
                             item.sample_rate,
+                            item.diarize,
                         )
                         elapsed = round(time.time() - start_time, 3)
                         queue_wait = round(start_time - item.submit_time, 3)
+
+                        if item.diarize:
+                            result["transcription_time"] = elapsed
+                            result["queue_wait_time"] = queue_wait
+                            if not item.future.done():
+                                item.future.set_result(result)
+                            self._stats["items_processed"] += 1
+                            continue
 
                         # Materialize once — a VAD result is a generator that
                         # would otherwise be exhausted by _extract_text before
@@ -280,7 +307,8 @@ class BatchProcessor:
                             "queue_wait_time": queue_wait,
                             "task": "transcribe",
                         }
-                        item.future.set_result(response)
+                        if not item.future.done():
+                            item.future.set_result(response)
                         self._stats["items_processed"] += 1
                         logger.info(
                             f"Batch item '{item.filename}': {elapsed}s inference, "
@@ -671,6 +699,8 @@ async def health_check(deep: bool = False):
         "provider": ASR_PROVIDER,
         "quantization": ASR_QUANTIZATION,
         "vad_enabled": USE_VAD,
+        "diarization_enabled": DIARIZATION_ENABLED,
+        "diarization_loaded": diarizer.model is not None,
         "batch": batch_processor.stats if batch_processor else None,
     }
 
@@ -742,12 +772,28 @@ async def transcribe_rest(
     file: UploadFile = File(...),
     model: str | None = Form(default=None),
     response_format: str | None = Form(default=None),
+    stream: bool = Form(default=False),
+    chunking_strategy: str | None = Form(default=None),
+    known_speaker_names: list[str] | None = Form(default=None, alias="known_speaker_names[]"),
+    known_speaker_references: list[str] | None = Form(default=None, alias="known_speaker_references[]"),
     timestamp_granularities: list[str] | None = Form(
         default=None, alias="timestamp_granularities[]"
     ),
 ):
     """Handles audio transcription via REST API (OpenAI compatible).
     Requests are queued and processed in batches for scalability."""
+    wants_diarization = response_format == "diarized_json"
+    if wants_diarization:
+        if stream:
+            raise HTTPException(400, "Streaming diarization is not supported; use stream=false.")
+        if timestamp_granularities:
+            raise HTTPException(400, "diarized_json provides speaker segment timestamps, not timestamp_granularities[].")
+        if known_speaker_names or known_speaker_references:
+            raise HTTPException(400, "Known-speaker reference matching is not supported.")
+        if chunking_strategy not in (None, "auto"):
+            raise HTTPException(400, "Only chunking_strategy=auto is supported for diarization.")
+        if not DIARIZATION_ENABLED:
+            raise HTTPException(503, "Diarization is disabled; set DIARIZATION_ENABLED=true.")
     if not asr_model:
         load_model()
     if not asr_model:
@@ -764,11 +810,16 @@ async def transcribe_rest(
     try:
         # Read audio bytes and decode with soundfile (handles wav, flac, ogg, etc.)
         audio_bytes = await file.read()
-        waveform, sample_rate = sf.read(io.BytesIO(audio_bytes), dtype="float32")
+        try:
+            waveform, sample_rate = sf.read(io.BytesIO(audio_bytes), dtype="float32")
+        except (sf.LibsndfileError, ValueError) as exc:
+            raise HTTPException(400, "Invalid or unsupported audio file.") from exc
 
         # Convert stereo to mono if needed
         if waveform.ndim == 2:
             waveform = waveform.mean(axis=1)
+        if len(waveform) == 0 or not np.isfinite(waveform).all():
+            raise HTTPException(400, "Audio must contain finite, non-empty samples.")
 
         logger.info(
             f"transcribe_rest: Audio loaded, {len(waveform)} samples, {sample_rate}Hz, "
@@ -777,9 +828,10 @@ async def transcribe_rest(
         )
 
         response = await batch_processor.submit(
-            waveform, sample_rate, file.filename or "unknown"
+            waveform, sample_rate, file.filename or "unknown", diarize=wants_diarization
         )
-        response = _ensure_response_segments(response)
+        if not wants_diarization:
+            response = _ensure_response_segments(response)
 
         logger.info(
             f"transcribe_rest: Completed for '{file.filename}', "
@@ -787,6 +839,10 @@ async def transcribe_rest(
             f"{response.get('queue_wait_time', 0)}s queued"
         )
 
+        if wants_diarization:
+            return JSONResponse(content={
+                key: response[key] for key in ("task", "duration", "text", "segments")
+            })
         return JSONResponse(content=response)
 
     except HTTPException:
