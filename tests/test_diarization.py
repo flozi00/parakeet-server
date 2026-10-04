@@ -59,6 +59,24 @@ def test_silence_and_empty_asr():
     assert transcribe_turns(audio, 16000, [(0, 1, "s")], recognize, server._extract_text)["text"] == ""
 
 
+def test_micro_turns_shorter_than_vad_window_are_dropped():
+    """Regression: <36 ms diarization turns crashed Silero VAD's sliding window.
+
+    Long recordings produce 10-30 ms micro-turns; crops shorter than the
+    576-sample VAD window raise "window shape cannot be larger than input
+    array shape" inside numpy sliding_window_view. They must be dropped.
+    """
+    recognize = Mock(return_value="words")
+    audio = np.zeros(3 * 16000, dtype=np.float32)
+    turns = [(0, 0.01, "speaker_0"), (0.02, 0.03, "speaker_1"), (1, 2, "speaker_2")]
+    result = transcribe_turns(audio, 16000, turns, recognize, server._extract_text)
+    # Only the 1 s turn survives; recognize is never called with <576 samples.
+    assert [s["speaker"] for s in result["segments"]] == ["A"]
+    assert all(s["end"] - s["start"] >= (512 + 64) / 16000 for s in result["segments"])
+    for call in recognize.call_args_list:
+        assert call.args[0].shape[0] >= 512 + 64
+
+
 def test_model_resamples_once_and_passes_complete_recording(monkeypatch):
     monkeypatch.setitem(sys.modules, "torch", SimpleNamespace(inference_mode=nullcontext, Tensor=type("Tensor", (), {})))
     backend = NemotronDiarizer()

@@ -66,6 +66,13 @@ def transcribe_turns(waveform, sample_rate, turns, recognize, extract_text):
     Crops use the original mono mixture, not source-separated audio. Overlap
     can therefore produce duplicated/misattributed words; see README.
     """
+    # Silero VAD (and other frame-based preprocessors) build a sliding window
+    # of 512+64 samples; crops shorter than that window crash numpy's
+    # sliding_window_view ("window shape cannot be larger than input array
+    # shape"). Diarization post-processing routinely emits 10-30 ms
+    # micro-turns on long recordings, so drop them before ASR.
+    min_crop = (512 + 64) * sample_rate // 16000
+    turns = [turn for turn in turns if round(turn[1] * sample_rate) - round(turn[0] * sample_rate) >= min_crop]
     segments, labels = [], {}
     for start, end, speaker in turns:
         label = labels.setdefault(speaker, chr(ord("A") + len(labels)))
