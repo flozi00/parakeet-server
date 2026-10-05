@@ -51,6 +51,12 @@ spec:
             #   value: "true"
             # - name: DIARIZATION_DEVICE
             #   value: "cuda"
+            # Online training (one replica/process per training repository):
+            # - name: TRAINING_REPO_ID
+            #   value: "your-account/parakeet-online"
+            # HF_TOKEN below needs write access; training also needs additional
+            # GPU/host memory for gradients and optimizer state. /ready returns
+            # 503 during training and inference reload.
             # Gated/private HF repos: set from a Secret, not inline:
             #   kubectl create secret generic hf-token --from-literal=token=***
             # - name: HF_TOKEN

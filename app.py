@@ -1,11 +1,14 @@
 import asyncio
 import gc
+import hashlib
 import io
 import json
 import logging
+import math
 import os
 import sys
 import time
+import traceback
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
@@ -20,6 +23,7 @@ from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 
 from diarization import NemotronDiarizer, transcribe_turns
+from training import OnlineTrainer, decode_example
 
 middleware = [
     Middleware(
@@ -74,6 +78,8 @@ TRT_MAX_WORKSPACE_GB = int(os.getenv("TRT_MAX_WORKSPACE_GB", "6"))
 USE_VAD = os.getenv("USE_VAD", "true").lower() == "true"
 DIARIZATION_ENABLED = os.getenv("DIARIZATION_ENABLED", "false").lower() == "true"
 diarizer = NemotronDiarizer()
+online_trainer = OnlineTrainer()
+training_active = False
 
 # NeMo export settings (only used when ONNX files not cached)
 NEMO_REPO_ID = os.getenv("NEMO_REPO_ID", "primeline/parakeet-primeline")
@@ -171,6 +177,7 @@ class BatchProcessor:
         self._queue: asyncio.Queue[_BatchItem] = asyncio.Queue(maxsize=max_queue_size)
         self._gpu_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="gpu")
         self._task: Optional[asyncio.Task] = None
+        self._training_future: Optional[asyncio.Future] = None
         self._stats = {
             "batches_processed": 0,
             "items_processed": 0,
@@ -189,7 +196,8 @@ class BatchProcessor:
                 await self._task
             except asyncio.CancelledError:
                 pass
-        self._gpu_executor.shutdown(wait=False)
+        # Finish an accepted training run/checkpoint upload even on shutdown.
+        await asyncio.to_thread(self._gpu_executor.shutdown, wait=True)
 
     # -- public API -----------------------------------------------------------
 
@@ -218,6 +226,17 @@ class BatchProcessor:
             )
         return await future
 
+    async def submit_training(self, examples, steps, batch_size, learning_rate):
+        if self._training_future is not None and not self._training_future.done():
+            raise HTTPException(409, "A training run is already pending or running.")
+        future = asyncio.get_running_loop().run_in_executor(
+            self._gpu_executor, _run_training, examples, steps, batch_size, learning_rate,
+        )
+        self._training_future = future
+        # Retrieve errors even if the requesting client disconnects.
+        future.add_done_callback(lambda done: done.exception() if not done.cancelled() else None)
+        return await asyncio.shield(future)
+
     # -- internal -------------------------------------------------------------
 
     async def _collect_batch(self) -> list[_BatchItem]:
@@ -241,6 +260,9 @@ class BatchProcessor:
 
     def _run_inference(self, waveform: np.ndarray, sample_rate: int, diarize: bool = False):
         """Blocking inference — called inside the thread-pool executor."""
+        load_model()
+        if asr_model is None:
+            raise HTTPException(503, "ASR model not available.")
         if diarize:
             try:
                 turns = diarizer.diarize(waveform, sample_rate)
@@ -394,9 +416,14 @@ def _build_providers():
         return ["CPUExecutionProvider"]
 
 
-def _ensure_onnx_export():
+def _ensure_onnx_export(nemo_checkpoint: Path | None = None):
     """Export .nemo model to ONNX if not already cached. Returns local ONNX path."""
     onnx_dir = ONNX_CACHE_DIR / NEMO_REPO_ID.replace("/", "_")
+    if nemo_checkpoint is not None:
+        # Every published training run gets a new cache; never reuse base ONNX
+        # files or TensorRT engines with stale weights.
+        key = hashlib.sha256(str(nemo_checkpoint.resolve()).encode()).hexdigest()[:16]
+        onnx_dir = ONNX_CACHE_DIR / f"trained_{key}"
     marker = onnx_dir / "config.json"
 
     if marker.exists():
@@ -410,7 +437,9 @@ def _ensure_onnx_export():
     from nemo.collections.asr.models import ASRModel
 
     # Download .nemo checkpoint
-    nemo_path = hf_hub_download(repo_id=NEMO_REPO_ID, filename=NEMO_FILENAME)
+    nemo_path = str(nemo_checkpoint) if nemo_checkpoint else hf_hub_download(
+        repo_id=NEMO_REPO_ID, filename=NEMO_FILENAME,
+    )
     logger.info(f"Downloaded .nemo to {nemo_path}, loading model for export...")
 
     # Load on CPU to minimise GPU memory during export
@@ -486,7 +515,8 @@ def load_model():
         import onnx_asr
 
         # If model path not set, ensure ONNX export exists
-        model_path = ASR_MODEL_PATH
+        checkpoint = online_trainer.current_checkpoint()
+        model_path = _ensure_onnx_export(checkpoint) if checkpoint else ASR_MODEL_PATH
         if not model_path:
             model_path = _ensure_onnx_export()
 
@@ -550,10 +580,61 @@ def load_model():
                 logger.warning(f"Warmup {i+1}/{warmup_iterations} failed (non-fatal): {e}")
 
     except Exception as e:
+        asr_model = None
         logger.critical(f"FATAL: Could not load ASR model. Error: {e}")
         raise
     finally:
         model_loading = False
+
+
+def _run_training(examples, steps, batch_size, learning_rate):
+    """The same executor owns training, export, reloading, and all inference."""
+    global asr_model, training_active
+    training_active = True
+    # Free ONNX and diarization GPU allocations for the full NeMo optimizer.
+    asr_model = None
+    diarizer.model = None
+    gc.collect()
+    try:
+        import torch
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        result = online_trainer.run(
+            examples, steps, batch_size, learning_rate, NEMO_REPO_ID, NEMO_FILENAME,
+        )
+    except Exception as exc:
+        # Failed training/upload does not advance the active checkpoint.
+        # Trainer error tracebacks can retain the entire GPU model/optimizer.
+        # Logs already contain the training traceback; release its frame locals
+        # before restoring inference so an OOM does not keep those allocations.
+        cause = exc
+        seen = set()
+        while cause is not None and id(cause) not in seen:
+            seen.add(id(cause))
+            traceback.clear_frames(cause.__traceback__)
+            cause = cause.__cause__ or cause.__context__
+        gc.collect()
+        if "torch" in sys.modules and sys.modules["torch"].cuda.is_available():
+            sys.modules["torch"].cuda.empty_cache()
+        try:
+            load_model()
+        except Exception:
+            logger.exception("Could not restore ASR after failed training")
+        raise
+    else:
+        try:
+            load_model()
+        except Exception as exc:
+            logger.exception("Checkpoint published but inference reload failed")
+            online_trainer.status = {**online_trainer.status, "state": "reload_failed"}
+            raise HTTPException(503, detail={
+                "message": "Checkpoint published, but inference reload failed; check server logs.",
+                "run_id": result["run_id"], "checkpoint_published": True,
+                "commit_sha": result["commit_sha"],
+            }) from exc
+        return {**result, "inference_reloaded": True}
+    finally:
+        training_active = False
 
 
 def _materialize_items(result):
@@ -701,17 +782,16 @@ async def health_check(deep: bool = False):
         "vad_enabled": USE_VAD,
         "diarization_enabled": DIARIZATION_ENABLED,
         "diarization_loaded": diarizer.model is not None,
+        "training": {"active": training_active, **online_trainer.status},
         "batch": batch_processor.stats if batch_processor else None,
     }
 
     if not deep:
-        base_status["status"] = "healthy" if asr_model else "degraded"
+        base_status["status"] = "training" if training_active else ("healthy" if asr_model else "degraded")
         return base_status
 
     try:
-        if not asr_model:
-            load_model()
-        if not asr_model:
+        if not batch_processor:
             base_status["status"] = "unhealthy"
             base_status["error"] = "Model not loaded"
             return JSONResponse(content=base_status, status_code=503)
@@ -725,10 +805,13 @@ async def health_check(deep: bool = False):
             return base_status
 
         start_time = time.time()
-        result = asr_model.recognize(warmup_audio_path)
+        waveform, sample_rate = sf.read(warmup_audio_path, dtype="float32")
+        if waveform.ndim == 2:
+            waveform = waveform.mean(axis=1)
+        result = await batch_processor.submit(waveform, sample_rate, "health-check")
         transcription_time = round(time.time() - start_time, 3)
 
-        text = _extract_text(result)
+        text = result["text"]
         if len(text) < 3:
             base_status["status"] = "unhealthy"
             base_status["error"] = "Transcription returned empty or too short result"
@@ -759,9 +842,10 @@ async def readiness():
     also runs a one-time .nemo -> ONNX/TensorRT export that can take many
     minutes). This endpoint flips to 200 exactly when the model can serve.
     """
-    if asr_model is None:
+    if training_active or asr_model is None:
         return JSONResponse(
-            content={"status": "not_ready", "model_loaded": False}, status_code=503
+            content={"status": "training" if training_active else "not_ready",
+                     "model_loaded": asr_model is not None}, status_code=503
         )
     return {"status": "ready", "model_loaded": True, "model_name": ASR_MODEL_NAME}
 
@@ -794,10 +878,6 @@ async def transcribe_rest(
             raise HTTPException(400, "Only chunking_strategy=auto is supported for diarization.")
         if not DIARIZATION_ENABLED:
             raise HTTPException(503, "Diarization is disabled; set DIARIZATION_ENABLED=true.")
-    if not asr_model:
-        load_model()
-    if not asr_model:
-        raise HTTPException(status_code=503, detail="ASR model not available.")
     if not batch_processor:
         raise HTTPException(status_code=503, detail="Batch processor not ready.")
 
@@ -850,6 +930,59 @@ async def transcribe_rest(
     except Exception as e:
         logger.error(f"transcribe_rest: Unhandled exception: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+async def _train_uploads(files, transcriptions, steps, batch_size, learning_rate):
+    online_trainer.check_available()
+    if ASR_QUANTIZATION is not None:
+        raise HTTPException(503, "Online training requires ASR_QUANTIZATION to be unset for ONNX reload.")
+    if len(files) != len(transcriptions):
+        raise HTTPException(400, "Provide one transcription for each audio file, in the same order.")
+    if not 1 <= len(files) <= online_trainer.max_examples:
+        raise HTTPException(400, f"Provide between 1 and {online_trainer.max_examples} pairs.")
+    if not 1 <= steps <= online_trainer.max_steps:
+        raise HTTPException(400, f"steps must be between 1 and {online_trainer.max_steps}.")
+    if not 1 <= batch_size <= online_trainer.max_examples:
+        raise HTTPException(400, f"batch_size must be between 1 and {online_trainer.max_examples}.")
+    if not math.isfinite(learning_rate) or not 0 < learning_rate <= 1:
+        raise HTTPException(400, "learning_rate must be finite and in (0, 1].")
+    if batch_processor is None:
+        raise HTTPException(503, "Batch processor not ready.")
+    examples = []
+    total_bytes = 0
+    for file, transcription in zip(files, transcriptions):
+        audio = await file.read(online_trainer.max_audio_bytes - total_bytes + 1)
+        total_bytes += len(audio)
+        if total_bytes > online_trainer.max_audio_bytes:
+            raise HTTPException(413, "Training audio exceeds TRAINING_MAX_AUDIO_BYTES.")
+        examples.append(decode_example(audio, transcription))
+    return await batch_processor.submit_training(examples, steps, batch_size, learning_rate)
+
+
+@app.post("/audio/training")
+@app.post("/v1/audio/training")
+async def train_single(
+    file: UploadFile = File(...),
+    transcription: str = Form(...),
+    steps: int = Form(default=1),
+    batch_size: int = Form(default=1),
+    learning_rate: float = Form(default=1e-5),
+):
+    """Fine-tune on one audio/transcript pair, publish, then reload inference."""
+    return await _train_uploads([file], [transcription], steps, batch_size, learning_rate)
+
+
+@app.post("/audio/training/batch")
+@app.post("/v1/audio/training/batch")
+async def train_batch(
+    files: list[UploadFile] = File(...),
+    transcriptions: list[str] = Form(...),
+    steps: int = Form(default=1),
+    batch_size: int = Form(default=1),
+    learning_rate: float = Form(default=1e-5),
+):
+    """Repeated files/transcriptions fields pair by position in the request."""
+    return await _train_uploads(files, transcriptions, steps, batch_size, learning_rate)
 
 
 def main():

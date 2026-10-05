@@ -1,6 +1,7 @@
 fastapi>=0.115.11
 uvicorn>=0.34.0
 onnx-asr[hub]>=0.10.2
+huggingface_hub>=0.34,<1.0
 # Keep the existing ORT / TensorRT-10 pair across the Python 3.12 upgrade.
 onnxruntime-gpu==1.23.2
 # Nemotron-3's high-resolution Sortformer requires code newer than v3.0.0.

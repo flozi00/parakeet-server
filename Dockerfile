@@ -26,7 +26,7 @@ RUN pip install --no-cache-dir \
         --extra-index-url https://pypi.nvidia.com \
         -r requirements.txt
 
-COPY app.py diarization.py ./
+COPY app.py diarization.py training.py ./
 
 # Where the runtime ONNX export (and any HF downloads) land. Mount a volume
 # here in production so the one-time .nemo -> ONNX export survives restarts.

@@ -1,0 +1,38 @@
+{
+  "tested_at": "2026-10-05T19:25:01.154880+00:00",
+  "repo_id": "flozi00/parakeet-server-hub-smoke-test",
+  "private": true,
+  "anonymous_access_denied": true,
+  "hub_resume_verified": true,
+  "checkpoint_format": "pytorch-test-fixture",
+  "runs": [
+    {
+      "endpoint": "/v1/audio/training",
+      "run_id": "8ad149be87454020bfc428cfa6f056e3",
+      "steps_completed": 3,
+      "examples": 1,
+      "weight": 0.30000001192092896,
+      "commit_sha": "24b2cc75404a64bd7e739e9fd30aa1b87cf72f31",
+      "commit_url": "https://huggingface.co/flozi00/parakeet-server-hub-smoke-test/commit/24b2cc75404a64bd7e739e9fd30aa1b87cf72f31",
+      "sha256": {
+        "model.nemo": "62678a8c12c2a25a31a31bc5646fdbeccd6566d16acda00af325059ad300aa3d",
+        "trainer.ckpt": "47bf6e2b9ab7f0f56767b6daf7d1f33cca629fa892d93cabb4846160bdb82b45",
+        "metadata.json": "c98addf90506a00d28f48f89e1086d847e2478ed996177aa6e4ba6a0e8a89b26"
+      }
+    },
+    {
+      "endpoint": "/v1/audio/training/batch",
+      "run_id": "e00f8dff30724314a9e758190891cace",
+      "steps_completed": 2,
+      "examples": 2,
+      "weight": 0.5,
+      "commit_sha": "c7782f64320f19be088540e79e31070b0af445b6",
+      "commit_url": "https://huggingface.co/flozi00/parakeet-server-hub-smoke-test/commit/c7782f64320f19be088540e79e31070b0af445b6",
+      "sha256": {
+        "model.nemo": "a63d2b86e905b0d57d80ede8768f25cce0db43fb6837de679c67cc8b921c2326",
+        "trainer.ckpt": "7d2181259dbc66477ea926b022d51796fd28827b1d19cd6688d1d903a72a39e4",
+        "metadata.json": "d48d59b5ad2d069e7ee0f28e2e85621ad490d83f74eed8622e42c3d6252e7093"
+      }
+    }
+  ]
+}

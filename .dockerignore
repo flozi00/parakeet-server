@@ -5,6 +5,7 @@ README.md
 __pycache__/
 *.pyc
 .venv/
+.venv-test/
 venv/
 *.wav
 .env
