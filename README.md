@@ -198,7 +198,10 @@ Use `HF_TOKEN` if needed for authenticated Hugging Face downloads.
 
 The image now uses Python 3.12 and a pinned NeMo Speech source revision containing
 Nemotron-3's high-resolution Sortformer implementation (NeMo 3.0.0 lacks that
-code). The existing ONNX Runtime 1.23.2 / TensorRT 10.9 pins are retained.
+code). The existing ONNX Runtime 1.23.2 / TensorRT 10.9 pins are retained. PyTorch is
+pinned to 2.8.0 so it shares their CUDA 12 runtime wheels instead of adding a
+second CUDA 13 stack. The image workflow frees unused runner SDKs before
+building to leave room for BuildKit's unpacked wheels and exported layers.
 The image build needs GitHub access for the pinned NeMo dependency.
 
 CPU tests use fake model outputs to check the API and processing contract:
