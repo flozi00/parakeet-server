@@ -496,7 +496,7 @@ def _ensure_onnx_export(nemo_checkpoint: Path | None = None):
 
 
 def load_model():
-    """Load the ASR model lazily on first request"""
+    """Load published training weights at startup, or retry on a later request."""
     global asr_model, model_loading
 
     if asr_model is not None:

@@ -185,8 +185,11 @@ def test_each_run_publishes_atomic_checkpoint_and_continues_previous_weights(bac
     ]
     assert not list(backend.directory.rglob("*.wav"))
     # Published local weights survive a new server instance.
+    download.side_effect = lambda repo, filename, **kwargs: str(backend.directory / filename)
+    download.reset_mock()
     restored = OnlineTrainer()
     assert restored.current_checkpoint() == backend.current_checkpoint()
+    download.assert_called_once_with("owner/private-model", "latest.json", revision="before")
 
 
 def test_public_destination_rejected_before_training(backend, hub, monkeypatch):
@@ -211,6 +214,88 @@ def test_restart_resolves_hub_pointer_at_one_revision(backend, hub, tmp_path):
     assert download.call_args_list[0].kwargs == {"revision": "before"}
     assert download.call_args_list[1].args == ("owner/private-model", "runs/remote/model.nemo")
     assert download.call_args_list[1].kwargs == {"revision": "before"}
+
+
+def test_restart_prefers_newer_hub_checkpoint_over_local_run(backend, hub, tmp_path, monkeypatch):
+    api, download, base = hub
+    old = backend.directory / "runs/old/model.nemo"
+    old.parent.mkdir(parents=True)
+    old.write_bytes(b"older weights")
+    (backend.directory / "latest.json").write_text(json.dumps({"checkpoint": "runs/old/model.nemo"}))
+    pointer = tmp_path / "remote-latest.json"
+    pointer.write_text(json.dumps({"checkpoint": "runs/new/model.nemo"}))
+    download.side_effect = lambda repo, filename, **kwargs: str(pointer if filename == "latest.json" else base)
+
+    restored = OnlineTrainer()
+    assert restored.current_checkpoint() == base
+    api.model_info.assert_called_once_with("owner/private-model")
+    assert download.call_args_list[1].args == ("owner/private-model", "runs/new/model.nemo")
+    # The first training request after restart must use those same weights.
+    fit = Mock(side_effect=fake_fit)
+    monkeypatch.setattr(restored, "_fit", fit)
+    restored.run([decode_example(wav_bytes(), "hello")], 1, 1, 1e-5, "base/repo", "base.nemo")
+    assert fit.call_args.args[0] == base
+    assert all(call.args[0] == "owner/private-model" for call in download.call_args_list)
+
+
+@pytest.mark.parametrize("has_checkpoint", [False, True])
+def test_startup_loads_published_weights_before_serving(monkeypatch, backend, hub, tmp_path, has_checkpoint):
+    api, download, base = hub
+    backend._resolved = False
+    if has_checkpoint:
+        pointer = tmp_path / "remote-latest.json"
+        pointer.write_text(json.dumps({"checkpoint": "runs/remote/model.nemo"}))
+        download.side_effect = lambda repo, filename, **kwargs: str(pointer if filename == "latest.json" else base)
+    monkeypatch.setattr(server, "online_trainer", backend)
+    monkeypatch.setattr(server, "asr_model", None)
+    monkeypatch.setattr(server, "ASR_MODEL_PATH", "base-onnx")
+    monkeypatch.setattr(server, "USE_VAD", False)
+    monkeypatch.setattr(server, "_log_active_providers", lambda model: None)
+    export = Mock(return_value="trained-onnx")
+    monkeypatch.setattr(server, "_ensure_onnx_export", export)
+    model = SimpleNamespace(recognize=lambda *a, **k: "hello")
+    load = Mock(return_value=SimpleNamespace(with_timestamps=lambda: model))
+    monkeypatch.setitem(sys.modules, "onnx_asr", SimpleNamespace(load_model=load))
+
+    with TestClient(server.app) as http:
+        assert http.get("/ready").status_code == 200
+        assert server.asr_model is model
+        assert load.call_args.kwargs["path"] == ("trained-onnx" if has_checkpoint else "base-onnx")
+        assert backend.current_checkpoint() == (base if has_checkpoint else None)
+    api.model_info.assert_called_once_with("owner/private-model")
+    if has_checkpoint:
+        export.assert_called_once_with(base)
+    else:
+        export.assert_not_called()
+
+
+def test_broken_published_checkpoint_leaves_startup_unready(monkeypatch, backend, hub, tmp_path):
+    _, download, _ = hub
+    backend._resolved = False
+    pointer = tmp_path / "remote-latest.json"
+    pointer.write_text(json.dumps({"checkpoint": "runs/missing/model.nemo"}))
+    missing = sys.modules["huggingface_hub.utils"].EntryNotFoundError
+    def fetch(repo, filename, **kwargs):
+        if filename == "latest.json":
+            return str(pointer)
+        raise missing("published weights missing")
+    download.side_effect = fetch
+    monkeypatch.setattr(server, "online_trainer", backend)
+    monkeypatch.setattr(server, "asr_model", None)
+    load = Mock()
+    monkeypatch.setitem(sys.modules, "onnx_asr", SimpleNamespace(load_model=load))
+    with TestClient(server.app) as http:
+        assert http.get("/ready").status_code == 503
+    load.assert_not_called()
+    assert not backend._resolved
+
+
+def test_unconfigured_destination_skips_hub_lookup(monkeypatch, hub):
+    api, download, _ = hub
+    monkeypatch.delenv("TRAINING_REPO_ID", raising=False)
+    assert OnlineTrainer().current_checkpoint() is None
+    api.model_info.assert_not_called()
+    download.assert_not_called()
 
 
 def test_new_destination_does_not_block_base_inference(backend, hub):

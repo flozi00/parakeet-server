@@ -89,9 +89,15 @@ fails, the API returns 502 with the run ID and the retained local checkpoint
 path; that run does not become active. A 503 with `checkpoint_published: true`
 means upload succeeded but inference reload failed. A client disconnect does
 not cancel an accepted run, and shutdown waits for its checkpoint operation.
-Restarting uses the locally published checkpoint, or downloads the Hub's
-`latest.json` checkpoint if the local volume is unavailable. Keep the cache
-volume persistent to retain unpublished checkpoints and avoid repeated exports.
+When `TRAINING_REPO_ID` is set, startup checks the Hub's `latest.json` and loads
+that run's `.nemo` weights for inference and subsequent training. The pointer
+and weights are resolved at the same Hub revision. A matching local checkpoint
+is reused; an older local run cannot hide a newer published checkpoint. A new
+or empty destination uses the base model. Network or checkpoint download errors
+leave the server unready rather than silently starting from base weights.
+Keep the cache volume persistent to retain unpublished checkpoints and avoid
+repeated exports. Training resumes model weights; each request still creates a
+fresh optimizer.
 
 | Environment variable | Default | Purpose |
 | --- | --- | --- |

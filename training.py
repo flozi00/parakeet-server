@@ -81,17 +81,9 @@ class OnlineTrainer:
             raise HTTPException(503, "Set TRAINING_REPO_ID to a private Hugging Face model repo.")
 
     def current_checkpoint(self) -> Path | None:
-        """Resume published weights locally, or from the Hub after rescheduling."""
+        """Resolve the Hub's latest published weights once per server instance."""
         if not self.repo_id or self._resolved:
             return self._checkpoint
-        pointer = self.directory / "latest.json"
-        if pointer.exists():
-            metadata = json.loads(pointer.read_text())
-            checkpoint = self.directory / metadata["checkpoint"]
-            if checkpoint.is_file():
-                self._checkpoint = checkpoint
-                self._resolved = True
-                return checkpoint
 
         from huggingface_hub import HfApi, hf_hub_download
         from huggingface_hub.utils import EntryNotFoundError, LocalEntryNotFoundError, RepositoryNotFoundError
@@ -112,12 +104,23 @@ class OnlineTrainer:
         except LocalEntryNotFoundError:
             raise  # A network/cache failure is not an empty training repository.
         except EntryNotFoundError:
+            logger.info("No published checkpoint in %s; starting from the base model.", self.repo_id)
             self._resolved = True
             return None
         metadata = json.loads(Path(latest).read_text())
-        self._checkpoint = Path(hf_hub_download(
-            self.repo_id, metadata["checkpoint"], revision=info.sha,
-        ))
+        # Consult the Hub even with a persistent volume: another server may
+        # have published newer weights since this instance last ran.
+        checkpoint = self.directory / metadata["checkpoint"]
+        pointer = self.directory / "latest.json"
+        if (pointer.is_file() and checkpoint.is_file()
+                and json.loads(pointer.read_text()).get("checkpoint") == metadata["checkpoint"]):
+            self._checkpoint = checkpoint
+        else:
+            self._checkpoint = Path(hf_hub_download(
+                self.repo_id, metadata["checkpoint"], revision=info.sha,
+            ))
+        logger.info("Resuming published checkpoint %s from %s at %s.",
+                    metadata["checkpoint"], self.repo_id, info.sha)
         self._resolved = True
         return self._checkpoint
 
