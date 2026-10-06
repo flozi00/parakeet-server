@@ -28,6 +28,14 @@ before training. Training starts from `NEMO_REPO_ID` / `NEMO_FILENAME` (defaults
 recent successfully published weights. An ONNX-only source cannot be trained;
 configure the matching original `.nemo` model. Leave `ASR_QUANTIZATION` unset.
 
+GPU training also needs Numba's CUDA compiler libraries (`libnvvm.so` and
+`libdevice`). The Docker image installs the CUDA 12.8 compiler wheel and exposes
+it through `CUDA_HOME`; the image build checks library discovery without a GPU.
+If an older deployment logs `NvvmSupportError: libNVVM cannot be found`, rebuild
+the image and update the deployment to its new digest. Installing packages on
+the machine running the sample script does not fix libraries inside the server
+container.
+
 Send one pair:
 
 ```bash
@@ -113,6 +121,100 @@ fresh optimizer.
 Full-model training needs memory for weights, gradients, and AdamW optimizer
 state, beyond inference memory. Tiny online batches can overfit and forget
 previous data; assess recognition quality on held-out audio for your use case.
+
+### Stream the YODAS3 WAV preview and train quality-checked pairs
+
+[scripts/stream_yodas3_training.py](scripts/stream_yodas3_training.py) streams
+[espnet/yodas3's WAV preview](https://huggingface.co/datasets/espnet/yodas3), transcribes each
+eligible caption's audio, compares that prediction with the dataset caption,
+and sends passing audio/caption pairs to `/v1/audio/training`. The **original
+dataset caption** is the training target. Each training request completes its
+checkpoint publication and inference reload before the next segment is checked.
+
+The sample uses **only Python's standard library**. No pip installation or
+external programs are needed on the client. Start a server with the training
+configuration described above:
+
+```bash
+# Inspect predictions and quality decisions without updating the model.
+python scripts/stream_yodas3_training.py \
+  --server-url https://parakeet-primeline.pl-ai.net/v1 \
+  --language de --max-segments 10 --dry-run
+
+# Train only pairs whose normalized word error rate is at most 15%.
+python scripts/stream_yodas3_training.py \
+  --server-url https://parakeet-primeline.pl-ai.net/v1 \
+  --language de --max-segments 10 \
+  --max-wer 0.15 --steps 1 --learning-rate 0.00001 \
+  > yodas3-training.jsonl
+```
+
+This version uses the dataset's **`preview` subset**, which currently has 177
+recordings with preview audio up to 120 seconds. The Dataset Viewer can return
+shorter WAV clips; the script uses their actual WAV length and skips captions
+outside it. It does not cover the full WebM/Parquet corpus. Python's built-in
+libraries cannot decode that corpus's WebM audio or read Parquet directly.
+
+`urllib` pages metadata from the
+[Hugging Face Dataset Viewer JSON API](https://huggingface.co/docs/dataset-viewer/rows)
+and streams each matching WAV into a temporary file in small chunks. The
+download finishes before training so slow checkpoint/export operations do not
+leave an audio HTTP connection open. The temporary preview is removed after
+processing, including on errors. `wave` reads audio sequentially and copies each
+caption window into a WAV upload. Audio keeps its
+original sample rate and channel count; the server handles mono conversion and
+resampling. Caption timestamps are converted from milliseconds to seconds.
+Overlapping caption display times are capped at the next caption's start;
+simultaneous captions are skipped. The script sends identical WAV bytes for
+checking and training. Memory holds one metadata page and the current audio
+window; disk holds one short preview, without downloading the full corpus.
+
+The quality gate removes differences in case, punctuation and whitespace, then
+computes word substitutions + deletions + insertions divided by the dataset
+caption's word count. `--max-wer 0` requires an exact normalized match; `0.15`
+allows up to 15% word errors. Blank predictions always fail. Agreement is a
+useful filter for noisy captions, **not proof of transcription accuracy**;
+both captions and predictions can share mistakes. The comparison uses
+whitespace-separated words and is intended for languages such as German and
+English. Choose `--language` to match your model's supported languages; English
+translations are not used as speech recognition labels.
+
+Defaults inspect at most 10 recordings and check at most 20 eligible segments,
+each 1–30 seconds long with at least 3 normalized words. Missing captions,
+invalid timestamps and incomplete audio crops are skipped. Adjust
+`--max-recordings`, `--max-segments`, `--min-seconds`, `--max-seconds` and
+`--min-words` as needed. Optionally filter preview rows with `--shards 0001`.
+Both German recordings in the current preview belong to shard `0001`; filtering
+German rows to `0000` yields no audio. Omit `--shards` to use all matching rows.
+`--offset` starts at a Dataset Viewer row offset. The Viewer serves its current
+preview; revision pinning is not supported. Output is flushed
+JSONL containing reference/predicted transcripts, WER, quality decisions,
+training results and a final count. Training performs a full checkpoint/export
+cycle per accepted pair, so start with a small segment limit. Temporary metadata
+GET failures (429/500/502/503/504 or network errors) are retried up to three
+times, with progress on stderr. Errors identify the HTTP method and service URL
+so a Hugging Face metadata failure is distinguishable from a Parakeet failure.
+Metadata requests time out after at most 60 seconds per attempt. POST failures
+stop the script; it never retries training automatically because an accepted run
+continues after a client timeout. Inspect `/health` and the destination's latest
+checkpoint before rerunning. The JSONL log is an audit record, not a resume file;
+rerunning starts at the selected preview row offset.
+
+For a deployment behind a gateway, its request timeout must also cover training,
+checkpoint publication and inference reload; the client's `--timeout` cannot
+extend a proxy timeout. A cold TensorRT request can take longer than warm
+transcriptions. If a request returns `504 upstream request timeout`, check the
+pod logs and the gateway route. The inference console's standalone HTTPRoute
+builder currently omits explicit timeouts. Configure the deployed route's
+`spec.rules[].timeouts.request` and `backendRequest` to cover the full operation
+(for example `3600s` for each), and check any outer proxy's timeout too. See
+[Gateway API HTTP timeouts](https://gateway-api.sigs.k8s.io/guides/user-guides/http-timeouts/).
+
+The sample's tests also use only the standard library:
+
+```bash
+python -S -m unittest discover -s tests -p test_stream_yodas3_training.py
+```
 
 ## Speaker diarization
 

@@ -26,6 +26,17 @@ RUN pip install --no-cache-dir \
         --extra-index-url https://pypi.nvidia.com \
         -r requirements.txt
 
+# Numba discovers NVVM/libdevice through CUDA_HOME, but does not discover
+# NVIDIA's pip wheel layout automatically. Expose the compiler wheel as a
+# toolkit and its CUDA runtime libraries at the expected lib64 location.
+RUN ln -s /usr/local/lib/python3.12/site-packages/nvidia/cuda_nvcc /usr/local/cuda \
+    && ln -s ../cuda_runtime/lib /usr/local/cuda/lib64
+ENV CUDA_HOME=/usr/local/cuda
+
+# This check needs no GPU and prevents shipping another inference-only image
+# whose first training request fails because NVVM or libdevice is missing.
+RUN python -c "from numba.cuda.cudadrv.libs import open_cudalib, open_libdevice; open_cudalib('nvvm'); open_cudalib('cudart'); assert open_libdevice()"
+
 COPY app.py diarization.py training.py ./
 
 # Where the runtime ONNX export (and any HF downloads) land. Mount a volume

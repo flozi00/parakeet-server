@@ -13,6 +13,9 @@ torch==2.8.0
 nvidia-cublas-cu12
 nvidia-cuda-runtime-cu12
 nvidia-cuda-nvrtc-cu12
+# NeMo's TDT/RNNT loss JIT-compiles CUDA kernels with Numba. Runtime/NVRTC
+# wheels alone omit NVVM and libdevice; match torch 2.8's CUDA 12.8 stack.
+nvidia-cuda-nvcc-cu12==12.8.93
 nvidia-cudnn-cu12
 nvidia-curand-cu12
 nvidia-cufft-cu12
