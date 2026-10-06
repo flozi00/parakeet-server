@@ -33,6 +33,12 @@ RUN ln -s /usr/local/lib/python3.12/site-packages/nvidia/cuda_nvcc /usr/local/cu
     && ln -s ../cuda_runtime/lib /usr/local/cuda/lib64
 ENV CUDA_HOME=/usr/local/cuda
 
+# The NVCC wheel ships an unversioned libnvvm.so. Numba's Linux filename
+# matcher only finds versioned .so names, then falls back to the system loader.
+# Register the wheel directory so that fallback works in CI and at runtime.
+RUN printf '%s\n' /usr/local/cuda/nvvm/lib64 > /etc/ld.so.conf.d/cuda-nvvm.conf \
+    && ldconfig
+
 # This check needs no GPU and prevents shipping another inference-only image
 # whose first training request fails because NVVM or libdevice is missing.
 RUN python -c "from numba.cuda.cudadrv.libs import open_cudalib, open_libdevice; open_cudalib('nvvm'); open_cudalib('cudart'); assert open_libdevice()"
