@@ -36,6 +36,14 @@ the image and update the deployment to its new digest. Installing packages on
 the machine running the sample script does not fix libraries inside the server
 container.
 
+The image also replaces NeMo's RNNT, multi-blank RNNT, and TDT gradient-clamp
+`min`/`max` calls with equivalent comparisons. This avoids Numba's CUDA variadic
+overload `Signature mismatch` during loss warmup. The build fails if the pinned
+upstream kernel no longer contains the expected three clamp sites. CPU CI
+exercises the real CUDA argument-validation pass and checks clamp equivalence;
+a real GPU optimizer step and checkpoint reload are still required to validate
+training end to end.
+
 Send one pair:
 
 ```bash

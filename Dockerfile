@@ -43,6 +43,11 @@ RUN printf '%s\n' /usr/local/cuda/nvvm/lib64 > /etc/ld.so.conf.d/cuda-nvvm.conf 
 # whose first training request fails because NVVM or libdevice is missing.
 RUN python -c "from numba.cuda.cudadrv.libs import open_cudalib, open_libdevice; open_cudalib('nvvm'); open_cudalib('cudart'); assert open_libdevice()"
 
+# NeMo's three gradient kernels use variadic min/max overloads that Numba's
+# CUDA compiler rejects. Apply the equivalent comparisons at image build time.
+COPY scripts/nemo_cuda_compat.py scripts/nemo_cuda_compat.py
+RUN python scripts/nemo_cuda_compat.py
+
 COPY app.py diarization.py training.py ./
 
 # Where the runtime ONNX export (and any HF downloads) land. Mount a volume

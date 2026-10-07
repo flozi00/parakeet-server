@@ -522,6 +522,96 @@
       "id": "readme_parakeet_server",
       "community": 5,
       "norm_label": "parakeet-server"
+    },
+    {
+      "id": "scripts_nemo_cuda_compat",
+      "label": "nemo_cuda_compat.py",
+      "file_type": "code",
+      "source_file": "scripts/nemo_cuda_compat.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 0
+    },
+    {
+      "id": "scripts_nemo_cuda_compat_patch_kernel",
+      "label": "patch_kernel()",
+      "file_type": "code",
+      "source_file": "scripts/nemo_cuda_compat.py",
+      "source_location": "L7",
+      "_origin": "ast",
+      "community": 0
+    },
+    {
+      "id": "scripts_nemo_cuda_compat_rationale_1",
+      "label": "Build-time workaround for NeMo's variadic CUDA min/max overloads.",
+      "file_type": "rationale",
+      "source_file": "scripts/nemo_cuda_compat.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 0
+    },
+    {
+      "id": "tests_test_nemo_cuda_compat",
+      "label": "test_nemo_cuda_compat.py",
+      "file_type": "code",
+      "source_file": "tests/test_nemo_cuda_compat.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 0
+    },
+    {
+      "id": "tests_test_nemo_cuda_compat_patcher",
+      "label": "patcher()",
+      "file_type": "code",
+      "source_file": "tests/test_nemo_cuda_compat.py",
+      "source_location": "L19",
+      "_origin": "ast",
+      "community": 0
+    },
+    {
+      "id": "tests_test_nemo_cuda_compat_kernel_source",
+      "label": "kernel_source()",
+      "file_type": "code",
+      "source_file": "tests/test_nemo_cuda_compat.py",
+      "source_location": "L26",
+      "_origin": "ast",
+      "community": 0
+    },
+    {
+      "id": "tests_test_nemo_cuda_compat_test_gradient_clamp_passes_real_cuda_argument_validation",
+      "label": "test_gradient_clamp_passes_real_cuda_argument_validation()",
+      "file_type": "code",
+      "source_file": "tests/test_nemo_cuda_compat.py",
+      "source_location": "L32",
+      "_origin": "ast",
+      "community": 0
+    },
+    {
+      "id": "tests_test_nemo_cuda_compat_test_clamp_preserves_original_numerical_behavior",
+      "label": "test_clamp_preserves_original_numerical_behavior()",
+      "file_type": "code",
+      "source_file": "tests/test_nemo_cuda_compat.py",
+      "source_location": "L78",
+      "_origin": "ast",
+      "community": 0
+    },
+    {
+      "id": "tests_test_nemo_cuda_compat_test_unexpected_upstream_source_is_not_modified",
+      "label": "test_unexpected_upstream_source_is_not_modified()",
+      "file_type": "code",
+      "source_file": "tests/test_nemo_cuda_compat.py",
+      "source_location": "L97",
+      "_origin": "ast",
+      "community": 0
+    },
+    {
+      "id": "tests_test_nemo_cuda_compat_rationale_1",
+      "label": "Regression coverage for NeMo's CUDA gradient-clamp compilation.",
+      "file_type": "rationale",
+      "source_file": "tests/test_nemo_cuda_compat.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 0
     }
   ],
   "links": [
@@ -1302,6 +1392,128 @@
       "source": "readme",
       "target": "readme_parakeet_server",
       "confidence_score": 1.0
+    },
+    {
+      "source": "scripts_nemo_cuda_compat",
+      "target": "scripts_nemo_cuda_compat_patch_kernel",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/nemo_cuda_compat.py",
+      "source_location": "L7",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_nemo_cuda_compat_rationale_1",
+      "target": "scripts_nemo_cuda_compat",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/nemo_cuda_compat.py",
+      "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_nemo_cuda_compat",
+      "target": "tests_test_nemo_cuda_compat_patcher",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_nemo_cuda_compat.py",
+      "source_location": "L19",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_nemo_cuda_compat",
+      "target": "tests_test_nemo_cuda_compat_kernel_source",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_nemo_cuda_compat.py",
+      "source_location": "L26",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_nemo_cuda_compat",
+      "target": "tests_test_nemo_cuda_compat_test_gradient_clamp_passes_real_cuda_argument_validation",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_nemo_cuda_compat.py",
+      "source_location": "L32",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_nemo_cuda_compat",
+      "target": "tests_test_nemo_cuda_compat_test_clamp_preserves_original_numerical_behavior",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_nemo_cuda_compat.py",
+      "source_location": "L78",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_nemo_cuda_compat",
+      "target": "tests_test_nemo_cuda_compat_test_unexpected_upstream_source_is_not_modified",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_nemo_cuda_compat.py",
+      "source_location": "L97",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_nemo_cuda_compat_test_gradient_clamp_passes_real_cuda_argument_validation",
+      "target": "tests_test_nemo_cuda_compat_kernel_source",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_nemo_cuda_compat.py",
+      "source_location": "L64",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_nemo_cuda_compat_test_gradient_clamp_passes_real_cuda_argument_validation",
+      "target": "tests_test_nemo_cuda_compat_patcher",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_nemo_cuda_compat.py",
+      "source_location": "L65",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_nemo_cuda_compat_test_clamp_preserves_original_numerical_behavior",
+      "target": "tests_test_nemo_cuda_compat_kernel_source",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_nemo_cuda_compat.py",
+      "source_location": "L82",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_nemo_cuda_compat_test_clamp_preserves_original_numerical_behavior",
+      "target": "tests_test_nemo_cuda_compat_patcher",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_nemo_cuda_compat.py",
+      "source_location": "L83",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_nemo_cuda_compat_test_unexpected_upstream_source_is_not_modified",
+      "target": "tests_test_nemo_cuda_compat_patcher",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_nemo_cuda_compat.py",
+      "source_location": "L101",
+      "weight": 1.0
+    },
+    {
+      "source": "tests_test_nemo_cuda_compat_rationale_1",
+      "target": "tests_test_nemo_cuda_compat",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_nemo_cuda_compat.py",
+      "source_location": "L1",
+      "weight": 1.0
     }
   ],
   "hyperedges": [],

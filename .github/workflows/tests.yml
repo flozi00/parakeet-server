@@ -14,5 +14,5 @@ jobs:
           python-version: '3.12'
       - run: pip install fastapi python-multipart numpy soundfile scipy httpx pytest
       - run: pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
-      - run: pip install lightning omegaconf
+      - run: pip install lightning omegaconf numba==0.68.0
       - run: python -m pytest -q
