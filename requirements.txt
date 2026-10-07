@@ -9,7 +9,7 @@ onnxruntime-gpu==1.23.2
 nemo_toolkit[asr] @ git+https://github.com/NVIDIA-NeMo/Speech.git@cf724ac337d1ebc7d0dda1e23fb80916f52927a5
 # NeMo requires torch>=2.7. Pin a CUDA-12 build so pip shares the runtime
 # below instead of also installing the multi-GB CUDA-13 stack.
-torch==2.8.0
+torch==2.13.0
 nvidia-cublas-cu12
 nvidia-cuda-runtime-cu12
 nvidia-cuda-nvrtc-cu12
