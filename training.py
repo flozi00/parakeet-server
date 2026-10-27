@@ -370,11 +370,19 @@ class OnlineTrainer:
             finally:
                 trainer.limit_val_batches = limit
             values = []
-            for result in results:
+            for result in results or []:
                 value = result.get("val_loss")
                 if value is None:
                     continue
                 values.append(float(value.detach().cpu()) if hasattr(value, "detach") else float(value))
+            if not values:
+                # NeMo logs val_loss through self.log(), which lands in
+                # callback_metrics even when the returned dict is empty.
+                value = trainer.callback_metrics.get("val_loss")
+                if value is not None:
+                    values.append(float(value.detach().cpu()) if hasattr(value, "detach") else float(value))
+            if not values:
+                logger.warning("Post-training loss probe found no val_loss; reporting the training loss only.")
             return sum(values) / len(values) if values else None
         except Exception:
             logger.warning("Post-training loss probe unavailable; reporting the training loss only.",
