@@ -268,6 +268,19 @@ def test_expired_token_is_reported_as_503(backend, hub, monkeypatch):
     fit.assert_not_called()
 
 
+def test_missing_trainer_checkpoint_restarts_the_lineage(backend, hub):
+    """Weights can be published without optimizer state; the step counter must not lie."""
+    _, download, base = hub
+    backend._resolved = True
+    backend._checkpoint = base
+    backend._metadata = {"checkpoint": "runs/x/model.nemo", "steps_completed": 7}
+    assert backend.resume_state() == (None, 0)
+    backend._metadata = {"checkpoint": "runs/x/model.nemo",
+                         "trainer_checkpoint": "runs/x/trainer.ckpt", "steps_completed": 7}
+    download.side_effect = HubError(404)
+    assert backend.resume_state() == (None, 0)
+
+
 def test_restart_resolves_hub_pointer_at_one_revision(backend, hub, tmp_path):
     _, download, base = hub
     pointer = tmp_path / "remote-latest.json"

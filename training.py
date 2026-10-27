@@ -181,13 +181,26 @@ class OnlineTrainer:
         global_step = int(metadata.get("global_step") or metadata.get("steps_completed") or 0)
         name = metadata.get("trainer_checkpoint")
         if not name:
-            return None, global_step
+            # No optimizer state to restore, so the lineage restarts at step 0
+            # even though the published weights are further along. Reporting the
+            # old step count here would make the trainer run that many extra
+            # steps (max_steps is absolute).
+            return None, 0
         path = self.directory / name
         if not path.is_file():
             from huggingface_hub import hf_hub_download
             logger.info("Downloading trainer checkpoint %s from %s (optimizer state).",
                         name, self.repo_id)
-            path = Path(hf_hub_download(self.repo_id, name, revision=self._revision))
+            try:
+                path = Path(hf_hub_download(self.repo_id, name, revision=self._revision))
+            except Exception as exc:
+                # A pruned or never-uploaded checkpoint is not fatal: the weights
+                # are still valid, only the optimizer moments are gone.
+                if self._status(exc) != 404:
+                    raise
+                logger.warning("Published trainer checkpoint %s is missing from %s; "
+                               "starting a fresh optimizer at step 0.", name, self.repo_id)
+                return None, 0
         return path, global_step
 
     @staticmethod
