@@ -367,6 +367,16 @@ def test_broken_published_checkpoint_leaves_startup_unready(monkeypatch, backend
     assert not backend._resolved
 
 
+def test_readiness_stays_up_while_training(client, monkeypatch):
+    """A single-replica pool cannot shed load; flipping readiness only kills the request."""
+    http, _ = client
+    monkeypatch.setattr(server, "asr_model", None)
+    monkeypatch.setattr(server, "training_active", True)
+    response = http.get("/ready")
+    assert response.status_code == 200
+    assert response.json()["status"] == "training"
+
+
 def test_unconfigured_destination_skips_hub_lookup(monkeypatch, hub):
     api, download, _ = hub
     monkeypatch.delenv("TRAINING_REPO_ID", raising=False)

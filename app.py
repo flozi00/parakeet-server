@@ -847,20 +847,26 @@ async def health_check(deep: bool = False):
 
 @app.get("/ready")
 async def readiness():
-    """Readiness probe: 503 until the ASR model is actually loaded.
+    """Readiness probe: 503 until the ASR model can serve.
 
     /health answers 200 ("degraded") as soon as the HTTP server is up, which
     makes it a fine liveness probe but a useless readiness gate — Kubernetes
     would route traffic to a pod that cannot transcribe yet (the first start
     also runs a one-time .nemo -> ONNX/TensorRT export that can take many
     minutes). This endpoint flips to 200 exactly when the model can serve.
+
+    Training keeps the pod Ready on purpose. The deployment has a single
+    replica, so flipping readiness cannot move traffic anywhere — it only makes
+    the gateway reset the in-flight training request, which then never returns
+    its result (observed: HTTP 000 after 84 s, training still ran). Inference
+    during training already answers a clean 503 ("ASR model not available").
     """
-    if training_active or asr_model is None:
+    if asr_model is None and not training_active:
         return JSONResponse(
-            content={"status": "training" if training_active else "not_ready",
-                     "model_loaded": asr_model is not None}, status_code=503
+            content={"status": "not_ready", "model_loaded": False}, status_code=503
         )
-    return {"status": "ready", "model_loaded": True, "model_name": ASR_MODEL_NAME}
+    return {"status": "training" if training_active else "ready",
+            "model_loaded": asr_model is not None, "model_name": ASR_MODEL_NAME}
 
 
 @app.post("/audio/transcriptions")
