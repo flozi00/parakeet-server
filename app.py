@@ -6,6 +6,7 @@ import json
 import logging
 import math
 import os
+import shutil
 import sys
 import time
 import traceback
@@ -45,6 +46,10 @@ async def lifespan(app: FastAPI):
         load_model()
     except Exception as e:
         logger.error(f"Failed to initialize model on startup: {e}")
+    try:
+        online_trainer.check_token()
+    except Exception:
+        logger.exception("HF token check failed")
     batch_processor = BatchProcessor(BATCH_SIZE, BATCH_TIMEOUT_MS, MAX_QUEUE_SIZE)
     batch_processor.start()
     logger.info(
@@ -481,6 +486,14 @@ def _ensure_onnx_export(nemo_checkpoint: Path | None = None):
     with marker.open("w") as f:
         json.dump(config, f, indent=2)
     logger.info(f"Wrote config.json to {marker}")
+
+    # Every published checkpoint gets its own export directory (~2.5 GB). The
+    # previous one is dead weight on the pod's emptyDir, and the model that
+    # used it has already been released before a new export starts.
+    for stale in ONNX_CACHE_DIR.glob("trained_*"):
+        if stale != onnx_dir:
+            shutil.rmtree(stale, ignore_errors=True)
+            logger.info(f"Removed superseded ONNX export {stale}")
 
     # Free NeMo/torch memory before loading with onnx-asr
     del model

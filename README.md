@@ -87,9 +87,18 @@ latest.json                  # pointer to the most recently published run
 ```
 
 Audio and transcriptions are temporary training inputs and are not uploaded.
-Previous run files remain available. The response includes `run_id`, `repo_id`,
-`checkpoint`, `trainer_checkpoint`, `steps_completed`, `loss`, `commit_sha`,
-`commit_url`, and `inference_reloaded: true`.
+The response includes `run_id`, `repo_id`, `checkpoint`, `trainer_checkpoint`,
+`steps_completed` (this request), `global_step` (cumulative), `resumed_from_step`,
+`loss`, `loss_before`, `loss_after`, `commit_sha`, `commit_url`, and
+`inference_reloaded: true`.
+
+Each request continues the previous one: the published `trainer.ckpt` is
+downloaded and restored, so the AdamW moments and the step counter carry over
+instead of restarting at step 1 with a cold optimizer. `loss_before` is the
+first training step's loss (pre-update) and `loss_after` the loss on the same
+examples after the update — the per-request evidence that the step helped.
+Only the newest `trainer.ckpt` can be resumed from, so publishing deletes the
+previous one, and runs beyond `TRAINING_KEEP_RUNS` are removed from the Hub.
 
 Training and inference share one worker. Training unloads ONNX and diarization
 models to free GPU memory, then exports the new weights into a separate ONNX
@@ -112,19 +121,26 @@ is reused; an older local run cannot hide a newer published checkpoint. A new
 or empty destination uses the base model. Network or checkpoint download errors
 leave the server unready rather than silently starting from base weights.
 Keep the cache volume persistent to retain unpublished checkpoints and avoid
-repeated exports. Training resumes model weights; each request still creates a
-fresh optimizer.
+repeated exports. Training resumes both the model weights and the optimizer
+state from the published trainer checkpoint.
+
+`HF_TOKEN` must be a **fine-grained or classic write token**. An `hf auth login`
+OAuth token expires after ~30 days; training then fails on its first Hub call
+with `401 Unauthorized` and nothing is published. Startup logs the token type
+and expiry, and an expired token returns 503 with an explicit message instead
+of a traceback.
 
 | Environment variable | Default | Purpose |
 | --- | --- | --- |
 | `TRAINING_REPO_ID` | unset | Private Hub model repository, e.g. `your-account/parakeet-online` |
-| `HF_TOKEN` | unset | Hugging Face write token; a cached Hub login also works |
+| `HF_TOKEN` | unset | Hugging Face **fine-grained write token** (no expiry); a cached Hub login also works but expires |
 | `TRAINING_CHECKPOINT_DIR` | `/root/.cache/huggingface/training` | Local run checkpoints, isolated by destination repo |
 | `TRAINING_DEVICE` | `cuda` if available, else `cpu` | NeMo training device |
 | `TRAINING_PRECISION` | `32-true` | Lightning precision setting |
 | `TRAINING_MAX_STEPS` | `100` | Maximum optimizer steps per request |
 | `TRAINING_MAX_EXAMPLES` | `64` | Maximum pairs and requested batch size |
 | `TRAINING_MAX_AUDIO_BYTES` | `67108864` | Maximum total uploaded audio bytes per request (64 MiB) |
+| `TRAINING_KEEP_RUNS` | `5` | Published runs kept on the Hub (older ones are deleted on publish) |
 
 Full-model training needs memory for weights, gradients, and AdamW optimizer
 state, beyond inference memory. Tiny online batches can overfit and forget

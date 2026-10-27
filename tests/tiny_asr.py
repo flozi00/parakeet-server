@@ -46,8 +46,23 @@ class TinyASR(pl.LightningModule):
     def train_dataloader(self):
         return self.loader
 
+    def setup_validation_data(self, config):
+        with open(config.manifest_filepath) as manifest:
+            rows = [json.loads(row) for row in manifest]
+        self.val_loader = torch.utils.data.DataLoader(
+            [torch.tensor(1.0) for _ in rows], batch_size=config.batch_size,
+        )
+
+    def val_dataloader(self):
+        return self.val_loader
+
     def training_step(self, batch, batch_idx):
         return (self.weight - batch.mean()) ** 2
+
+    def validation_step(self, batch, batch_idx):
+        loss = (self.weight - batch.mean()) ** 2
+        self.log("val_loss", loss)
+        return {"val_loss": loss}
 
     def save_to(self, path):
         torch.save(self.state_dict(), path)

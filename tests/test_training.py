@@ -145,6 +145,8 @@ def hub(monkeypatch, tmp_path):
     api = Mock()
     api.model_info.return_value = SimpleNamespace(private=True, sha="before")
     api.create_commit.return_value = SimpleNamespace(oid="after", commit_url="https://huggingface.co/commit/after")
+    api.list_repo_files.return_value = []
+    api.list_repo_commits.return_value = []
     def fetch(repo_id, filename, **kwargs):
         if filename == "latest.json":
             raise EntryNotFoundError("empty repo")
@@ -153,14 +155,16 @@ def hub(monkeypatch, tmp_path):
     monkeypatch.setitem(sys.modules, "huggingface_hub", SimpleNamespace(
         HfApi=lambda: api, get_token=lambda: "test-token", hf_hub_download=download,
         CommitOperationAdd=lambda **kwargs: SimpleNamespace(**kwargs),
+        CommitOperationDelete=lambda **kwargs: SimpleNamespace(**kwargs),
     ))
     return api, download, base
 
 
-def fake_fit(source, examples, run_dir, steps, batch_size, learning_rate):
+def fake_fit(source, examples, run_dir, steps, batch_size, learning_rate, **kwargs):
     (run_dir / "model.nemo").write_bytes(b"updated weights")
     (run_dir / "trainer.ckpt").write_bytes(b"optimizer state")
-    return {"steps_completed": steps, "loss": 0.25}
+    return {"steps_completed": steps, "global_step": steps + kwargs.get("start_step", 0),
+            "loss": 0.25}
 
 
 def test_each_run_publishes_atomic_checkpoint_and_continues_previous_weights(backend, hub, monkeypatch):
@@ -174,7 +178,13 @@ def test_each_run_publishes_atomic_checkpoint_and_continues_previous_weights(bac
     assert first["run_id"] != second["run_id"]
     assert fit.call_args_list[0].args[0] == base
     assert fit.call_args_list[1].args[0] == first_checkpoint
-    assert first_checkpoint.exists()
+    # The second request resumes the first one's optimizer state and step count.
+    assert fit.call_args_list[1].kwargs["resume"] == (
+        backend.directory / f"runs/{first['run_id']}/trainer.ckpt")
+    assert fit.call_args_list[1].kwargs["start_step"] == 2
+    # Superseded local runs are dropped; the Hub keeps the history.
+    assert not first_checkpoint.exists()
+    assert backend.current_checkpoint().exists()
     assert json.loads((backend.directory / "latest.json").read_text())["run_id"] == second["run_id"]
     api.create_repo.assert_called_with(repo_id="owner/private-model", repo_type="model", private=True, exist_ok=True)
     commit = api.create_commit.call_args.kwargs
@@ -190,6 +200,24 @@ def test_each_run_publishes_atomic_checkpoint_and_continues_previous_weights(bac
     restored = OnlineTrainer()
     assert restored.current_checkpoint() == backend.current_checkpoint()
     download.assert_called_once_with("owner/private-model", "latest.json", revision="before")
+
+
+def test_publish_prunes_superseded_trainer_checkpoint(backend, hub, monkeypatch):
+    """Only the newest trainer checkpoint can be resumed from; older ones are dead weight."""
+    api, _, _ = hub
+    old = "runs/" + "a" * 32
+    api.list_repo_files.return_value = [
+        "latest.json", f"{old}/model.nemo", f"{old}/trainer.ckpt", f"{old}/metadata.json",
+    ]
+    api.list_repo_commits.return_value = [
+        SimpleNamespace(title=f"Online training {'a' * 32}: steps 0->1, 1 examples"),
+    ]
+    backend._metadata = {"trainer_checkpoint": f"{old}/trainer.ckpt"}
+    monkeypatch.setattr(backend, "_fit", Mock(side_effect=fake_fit))
+    backend.run([decode_example(wav_bytes(), "hello")], 1, 1, 1e-5, "base/repo", "base.nemo")
+    operations = api.create_commit.call_args.kwargs["operations"]
+    deleted = [op.path_in_repo for op in operations if not hasattr(op, "path_or_fileobj")]
+    assert deleted == [f"{old}/trainer.ckpt"]
 
 
 def test_public_destination_rejected_before_training(backend, hub, monkeypatch):
@@ -446,11 +474,15 @@ def test_trained_export_uses_new_cache_for_each_checkpoint(monkeypatch, tmp_path
     first_cache = server._ensure_onnx_export(first)
     second_cache = server._ensure_onnx_export(second)
     assert first_cache != second_cache
+    # Only the active export is kept; the superseded one is removed.
+    assert not Path(first_cache).exists()
+    assert Path(second_cache).is_dir()
+    # Asking for the superseded checkpoint again re-exports it and drops the other.
     assert server._ensure_onnx_export(first) == first_cache
-    assert len(exported) == 2
-    assert [call.args[0] for call in restore.call_args_list] == [str(first), str(second)]
+    assert len(exported) == 3
+    assert not Path(second_cache).exists()
+    assert [call.args[0] for call in restore.call_args_list] == [str(first), str(second), str(first)]
     download.assert_not_called()
-    for cache in (first_cache, second_cache):
-        assert (Path(cache) / "encoder-model.onnx").is_file()
-        assert (Path(cache) / "decoder_joint-model.onnx").is_file()
-        assert json.loads((Path(cache) / "config.json").read_text())["model_type"] == "nemo-conformer-tdt"
+    assert (Path(first_cache) / "encoder-model.onnx").is_file()
+    assert (Path(first_cache) / "decoder_joint-model.onnx").is_file()
+    assert json.loads((Path(first_cache) / "config.json").read_text())["model_type"] == "nemo-conformer-tdt"
