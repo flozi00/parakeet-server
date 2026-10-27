@@ -205,19 +205,23 @@ def test_each_run_publishes_atomic_checkpoint_and_continues_previous_weights(bac
 def test_publish_prunes_superseded_trainer_checkpoint(backend, hub, monkeypatch):
     """Only the newest trainer checkpoint can be resumed from; older ones are dead weight."""
     api, _, _ = hub
-    old = "runs/" + "a" * 32
-    api.list_repo_files.return_value = [
-        "latest.json", f"{old}/model.nemo", f"{old}/trainer.ckpt", f"{old}/metadata.json",
-    ]
+    runs = [f"{index:032x}" for index in range(6)]  # newest first
+    files = ["latest.json"]
+    for run in runs:
+        files += [f"runs/{run}/model.nemo", f"runs/{run}/trainer.ckpt", f"runs/{run}/metadata.json"]
+    api.list_repo_files.return_value = files
     api.list_repo_commits.return_value = [
-        SimpleNamespace(title=f"Online training {'a' * 32}: steps 0->1, 1 examples"),
+        SimpleNamespace(title=f"Online training {run}: steps 0->1, 1 examples") for run in runs
     ]
-    backend._metadata = {"trainer_checkpoint": f"{old}/trainer.ckpt"}
+    backend._metadata = {"trainer_checkpoint": f"runs/{runs[0]}/trainer.ckpt"}
     monkeypatch.setattr(backend, "_fit", Mock(side_effect=fake_fit))
     backend.run([decode_example(wav_bytes(), "hello")], 1, 1, 1e-5, "base/repo", "base.nemo")
     operations = api.create_commit.call_args.kwargs["operations"]
-    deleted = [op.path_in_repo for op in operations if not hasattr(op, "path_or_fileobj")]
-    assert deleted == [f"{old}/trainer.ckpt"]
+    deleted = {op.path_in_repo for op in operations if not hasattr(op, "path_or_fileobj")}
+    assert {f"runs/{run}/trainer.ckpt" for run in runs} <= deleted
+    # keep_runs=5 keeps the newest four published runs plus the new one.
+    assert {f"runs/{run}/model.nemo" for run in runs[4:]} <= deleted
+    assert not {f"runs/{run}/model.nemo" for run in runs[:4]} & deleted
 
 
 def test_public_destination_rejected_before_training(backend, hub, monkeypatch):

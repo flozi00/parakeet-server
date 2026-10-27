@@ -362,19 +362,23 @@ class OnlineTrainer:
             logger.warning("Could not list %s to prune old runs; keeping them.",
                            self.repo_id, exc_info=True)
             files, commits = None, []
-        if previous and previous != f"runs/{run_id}/trainer.ckpt" and (
-                files is None or previous in files):
-            operations.append(CommitOperationDelete(path_in_repo=previous))
         published = []
         for entry in commits:  # newest first
             match = re.match(r"Online training ([0-9a-f]{32}):", entry.title or "")
             if match and match.group(1) not in published:
                 published.append(match.group(1))
+        # Only the newest trainer checkpoint can be resumed from.
+        checkpoints = {f"runs/{stale}/trainer.ckpt" for stale in published}
+        if previous:
+            checkpoints.add(previous)
+        checkpoints.discard(f"runs/{run_id}/trainer.ckpt")
+        operations += [CommitOperationDelete(path_in_repo=path)
+                       for path in sorted(checkpoints)
+                       if files is None or path in files]
         for stale in published[max(0, self.keep_runs - 1):]:
             operations += [
                 CommitOperationDelete(path_in_repo=path)
-                for path in (f"runs/{stale}/{name}"
-                             for name in ("model.nemo", "trainer.ckpt", "metadata.json"))
+                for path in (f"runs/{stale}/{name}" for name in ("model.nemo", "metadata.json"))
                 if files is None or path in files
             ]
         return operations
