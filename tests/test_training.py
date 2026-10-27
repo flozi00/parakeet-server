@@ -128,6 +128,14 @@ def test_manifest_resamples_and_preserves_unicode(tmp_path):
     assert row["text"] == "Grüße! 👋" and row["duration"] == 1
 
 
+class HubError(Exception):
+    """Stand-in for huggingface_hub's HTTP errors, which carry a response."""
+
+    def __init__(self, status):
+        super().__init__(str(status))
+        self.response = SimpleNamespace(status_code=status)
+
+
 @pytest.fixture
 def hub(monkeypatch, tmp_path):
     class EntryNotFoundError(Exception):
@@ -186,7 +194,8 @@ def test_each_run_publishes_atomic_checkpoint_and_continues_previous_weights(bac
     assert not first_checkpoint.exists()
     assert backend.current_checkpoint().exists()
     assert json.loads((backend.directory / "latest.json").read_text())["run_id"] == second["run_id"]
-    api.create_repo.assert_called_with(repo_id="owner/private-model", repo_type="model", private=True, exist_ok=True)
+    # The repo exists, so publishing must not need repo-creation rights.
+    api.create_repo.assert_not_called()
     commit = api.create_commit.call_args.kwargs
     assert commit["parent_commit"] == "before"
     assert [operation.path_in_repo for operation in commit["operations"]] == [
@@ -234,6 +243,29 @@ def test_public_destination_rejected_before_training(backend, hub, monkeypatch):
     assert error.value.status_code == 409
     fit.assert_not_called()
     api.create_commit.assert_not_called()
+
+
+def test_missing_repo_is_created_once(backend, hub, monkeypatch):
+    api, _, base = hub
+    backend._checkpoint = base  # already resolved; only the publish path queries the Hub
+    api.model_info.side_effect = [HubError(404), SimpleNamespace(private=True, sha="before")]
+    monkeypatch.setattr(backend, "_fit", Mock(side_effect=fake_fit))
+    backend.run([decode_example(wav_bytes(), "hello")], 1, 1, 1e-5, "base/repo", "base.nemo")
+    api.create_repo.assert_called_once_with(
+        repo_id="owner/private-model", repo_type="model", private=True, exist_ok=True)
+
+
+def test_expired_token_is_reported_as_503(backend, hub, monkeypatch):
+    api, _, base = hub
+    backend._checkpoint = base
+    api.model_info.side_effect = HubError(401)
+    fit = Mock()
+    monkeypatch.setattr(backend, "_fit", fit)
+    with pytest.raises(HTTPException) as error:
+        backend.run([decode_example(wav_bytes(), "hello")], 1, 1, 1e-5, "base/repo", "base.nemo")
+    assert error.value.status_code == 503
+    assert "fine-grained write token" in error.value.detail
+    fit.assert_not_called()
 
 
 def test_restart_resolves_hub_pointer_at_one_revision(backend, hub, tmp_path):

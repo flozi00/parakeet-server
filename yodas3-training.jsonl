@@ -1,0 +1,3 @@
+{"event": "source", "dataset": "espnet/yodas3", "config": "preview", "language": "de", "offset": 0, "dry_run": false}
+{"event": "quality", "id": "55bab1f4d80db0260b64e2a54feaed60", "shard": "0001", "segment": 0, "start": 0.0, "end": 1.719, "reference": "Papas wir sie dir an auf die Nerven", "hypothesis": "Papas wird sie dir an auf die Nerven.", "wer": 0.125, "max_wer": 0.15, "quality_passed": true, "dry_run": false}
+{"event": "training_error", "id": "55bab1f4d80db0260b64e2a54feaed60", "shard": "0001", "segment": 0, "start": 0.0, "end": 1.719, "error": "POST https://parakeet-primeline.pl-ai.net/v1/audio/training: HTTP 504: upstream request timeout"}

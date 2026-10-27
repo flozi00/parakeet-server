@@ -190,16 +190,18 @@ class OnlineTrainer:
             path = Path(hf_hub_download(self.repo_id, name, revision=self._revision))
         return path, global_step
 
-    def _private_repo(self):
-        from huggingface_hub import HfApi, get_token
+    @staticmethod
+    def _status(exc) -> int | None:
+        return getattr(getattr(exc, "response", None), "status_code", None)
 
-        if not get_token():
-            raise HTTPException(503, "Training requires HF_TOKEN (or an authenticated Hugging Face login).")
-        api = HfApi()
+    def _repo_info(self, api):
+        """`model_info`, or None when the destination repo does not exist yet."""
         try:
-            api.create_repo(repo_id=self.repo_id, repo_type="model", private=True, exist_ok=True)
+            return api.model_info(self.repo_id)
         except Exception as exc:
-            status = getattr(getattr(exc, "response", None), "status_code", None)
+            status = self._status(exc)
+            if status == 404:
+                return None
             if status in (401, 403):
                 # An `hf auth login` OAuth token expires after ~30 days; only a
                 # fine-grained/classic write token keeps working unattended.
@@ -209,7 +211,30 @@ class OnlineTrainer:
                     "(no expiry) and restart the pod."
                 )) from exc
             raise
-        info = api.model_info(self.repo_id)
+
+    def _private_repo(self):
+        from huggingface_hub import HfApi, get_token
+
+        if not get_token():
+            raise HTTPException(503, "Training requires HF_TOKEN (or an authenticated Hugging Face login).")
+        api = HfApi()
+        # Look before creating: a fine-grained token scoped to one repo can
+        # write to it but is not allowed to create repos, and create_repo
+        # would fail with 403 even though publishing works.
+        info = self._repo_info(api)
+        if info is None:
+            try:
+                api.create_repo(repo_id=self.repo_id, repo_type="model", private=True, exist_ok=True)
+            except Exception as exc:
+                if self._status(exc) in (401, 403):
+                    raise HTTPException(503, (
+                        f"HF_TOKEN cannot create {self.repo_id}. Replace it with a "
+                        "fine-grained write token (no expiry) and restart the pod."
+                    )) from exc
+                raise
+            info = self._repo_info(api)
+            if info is None:
+                raise HTTPException(503, f"Training repo {self.repo_id} is not accessible.")
         # create_repo(private=True) does not change an existing repo's visibility.
         if not info.private:
             raise HTTPException(409, "TRAINING_REPO_ID is public; use a private model repo.")
