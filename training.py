@@ -383,6 +383,10 @@ class OnlineTrainer:
                     values.append(float(value.detach().cpu()) if hasattr(value, "detach") else float(value))
             if not values:
                 logger.warning("Post-training loss probe found no val_loss; reporting the training loss only.")
+                logger.warning("Probe detail: %d validation batch(es), result keys %s, callback keys %s",
+                               len(trainer.val_dataloaders or []),
+                               [sorted(r) for r in (results or [])],
+                               sorted(trainer.callback_metrics))
             return sum(values) / len(values) if values else None
         except Exception:
             logger.warning("Post-training loss probe unavailable; reporting the training loss only.",
