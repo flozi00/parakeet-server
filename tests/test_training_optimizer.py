@@ -77,3 +77,28 @@ def test_resume_continues_optimizer_state_and_lowers_loss(monkeypatch, tmp_path)
     assert second["loss_before"] < first["loss_before"]
     assert second["loss_after"] is not None
     assert second["loss_after"] < second["loss_before"]
+
+
+def test_probe_reads_val_wer_when_the_model_logs_no_loss():
+    """NeMo's RNNT validation loop logs val_wer only, never val_loss.
+
+    Production showed `result keys [['global_step', 'val_wer']]`, so a probe
+    that only looked for val_loss reported nothing on every real run.
+    """
+    pytest.importorskip("omegaconf")
+    from pathlib import Path
+
+    class FakeModel:
+        def setup_validation_data(self, config):
+            self.config = config
+
+    class FakeTrainer:
+        limit_val_batches = 0
+        callback_metrics = {}
+        val_dataloaders = [object()]
+
+        def validate(self, model, verbose=False):
+            return [{"global_step": 9, "val_wer": 0.25}]
+
+    metrics = OnlineTrainer._probe_metrics(FakeModel(), FakeTrainer(), Path("m.json"), 16000, 1)
+    assert metrics == {"loss": None, "wer": 0.25}

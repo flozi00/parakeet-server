@@ -89,7 +89,7 @@ latest.json                  # pointer to the most recently published run
 Audio and transcriptions are temporary training inputs and are not uploaded.
 The response includes `run_id`, `repo_id`, `checkpoint`, `trainer_checkpoint`,
 `steps_completed` (this request), `global_step` (cumulative), `resumed_from_step`,
-`loss`, `loss_before`, `loss_after`, `commit_sha`, `commit_url`, and
+`loss`, `loss_before`, `loss_after`, `wer_after`, `commit_sha`, `commit_url`, and
 `inference_reloaded: true`.
 
 Each request continues the previous one: the published `trainer.ckpt` is
@@ -97,6 +97,9 @@ downloaded and restored, so the AdamW moments and the step counter carry over
 instead of restarting at step 1 with a cold optimizer. `loss_before` is the
 first training step's loss (pre-update) and `loss_after` the loss on the same
 examples after the update — the per-request evidence that the step helped.
+NeMo's RNNT models log `val_wer` and never `val_loss`, so for those the probe
+reports `wer_after` instead and `loss_after` stays `null`; both are best effort
+and never fail a finished run.
 Only the newest `trainer.ckpt` can be resumed from, so publishing deletes the
 previous one, and runs beyond `TRAINING_KEEP_RUNS` are removed from the Hub.
 
@@ -104,7 +107,9 @@ Training and inference share one worker. Training unloads ONNX and diarization
 models to free GPU memory, then exports the new weights into a separate ONNX
 cache and reloads inference. Queued transcription requests wait until this is
 complete; deep health inference uses that same queue. `/health` reports training
-state and `/ready` returns 503 during training and reload. Only one training
+state and `/ready` stays 200 during training (a single-replica pool cannot shed
+load, and flipping readiness only resets the in-flight training request) while
+inference answers 503. Only one training
 request may be pending/running; another returns 409. Use one server process and
 one replica per training repository. Hub commits also check that the repository
 has not changed during the run.

@@ -327,14 +327,15 @@ class OnlineTrainer:
                 (run_dir / "model.pending.nemo").replace(run_dir / "model.nemo")
                 # Best effort, and only after both artifacts are on disk: a
                 # probe that cannot run must never cost a finished run.
-                loss_after = self._probe_loss(model, trainer, manifest, sample_rate, batch_size)
+                after = self._probe_metrics(model, trainer, manifest, sample_rate, batch_size)
             return {
                 "steps_completed": steps,
                 "global_step": trainer.global_step,
                 "resumed_from_step": start_step,
                 "loss": monitor.losses[-1] if monitor.losses else None,
                 "loss_before": monitor.losses[0] if monitor.losses else None,
-                "loss_after": loss_after,
+                "loss_after": after["loss"],
+                "wer_after": after["wer"],
             }
         finally:
             del model, trainer
@@ -343,17 +344,21 @@ class OnlineTrainer:
                 torch.cuda.empty_cache()
 
     @staticmethod
-    def _probe_loss(model, trainer, manifest: Path, sample_rate: int,
-                    batch_size: int) -> float | None:
-        """Loss on this request's own examples after the update (best effort).
+    def _probe_metrics(model, trainer, manifest: Path, sample_rate: int,
+                       batch_size: int) -> dict:
+        """Score this request's own examples after the update (best effort).
 
         The first training step's loss is measured before the update, so the
         pair is the only per-request evidence that the step helped. NeMo's
         validation loop is the documented way to score a batch; a model or
         Lightning version that cannot run it must not fail the run.
+
+        NeMo's RNNT models log val_wer and never val_loss, so both are read:
+        loss for models that report it, WER for the ASR models that do not.
         """
         from omegaconf import OmegaConf
 
+        empty = {"loss": None, "wer": None}
         try:
             model.setup_validation_data(OmegaConf.create({
                 "manifest_filepath": str(manifest), "sample_rate": sample_rate,
@@ -369,29 +374,35 @@ class OnlineTrainer:
                 results = trainer.validate(model, verbose=False)
             finally:
                 trainer.limit_val_batches = limit
-            values = []
+            keys = (("val_loss", "loss"), ("val_wer", "wer"))
+            values = {"loss": [], "wer": []}
             for result in results or []:
-                value = result.get("val_loss")
-                if value is None:
+                for key, bucket in keys:
+                    value = result.get(key)
+                    if value is not None:
+                        values[bucket].append(
+                            float(value.detach().cpu()) if hasattr(value, "detach") else float(value))
+            for key, bucket in keys:
+                if values[bucket]:
                     continue
-                values.append(float(value.detach().cpu()) if hasattr(value, "detach") else float(value))
-            if not values:
-                # NeMo logs val_loss through self.log(), which lands in
-                # callback_metrics even when the returned dict is empty.
-                value = trainer.callback_metrics.get("val_loss")
+                # NeMo logs through self.log(), which lands in callback_metrics
+                # even when the returned dict is empty.
+                value = trainer.callback_metrics.get(key)
                 if value is not None:
-                    values.append(float(value.detach().cpu()) if hasattr(value, "detach") else float(value))
-            if not values:
-                logger.warning("Post-training loss probe found no val_loss; reporting the training loss only.")
+                    values[bucket].append(
+                        float(value.detach().cpu()) if hasattr(value, "detach") else float(value))
+            if not values["loss"] and not values["wer"]:
+                logger.warning("Post-training probe found neither val_loss nor val_wer; "
+                               "reporting the training loss only.")
                 logger.warning("Probe detail: %d validation batch(es), result keys %s, callback keys %s",
                                len(trainer.val_dataloaders or []),
                                [sorted(r) for r in (results or [])],
                                sorted(trainer.callback_metrics))
-            return sum(values) / len(values) if values else None
+            return {bucket: (sum(v) / len(v) if v else None) for bucket, v in values.items()}
         except Exception:
-            logger.warning("Post-training loss probe unavailable; reporting the training loss only.",
+            logger.warning("Post-training probe unavailable; reporting the training loss only.",
                            exc_info=True)
-            return None
+            return empty
 
     def _prune_operations(self, api, run_id: str) -> list:
         """Delete superseded trainer checkpoints and runs beyond TRAINING_KEEP_RUNS.
